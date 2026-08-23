@@ -109,6 +109,23 @@ describe("ترابط تعديل بيانات العميل", () => {
     expect(screen.getByLabelText("فلترة حالة العميل: متأخر")).toBeTruthy();
   });
 
+  it("يبدل بين البطاقات الملونة والجدول ويحافظ على العرض النشط", () => {
+    render(<Customers />);
+    const cardsView = screen.getByTestId("customer-view-cards");
+    const tableView = screen.getByTestId("customer-view-table");
+    expect(cardsView.className).toContain("block");
+    expect(tableView.className).toContain("hidden");
+    expect(screen.getByTestId("customer-view-cards-button").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByTestId("customer-view-table-button"));
+    expect(tableView.className).toContain("block");
+    expect(cardsView.className).toContain("hidden");
+    expect(screen.getByTestId("customer-view-table-button").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("columnheader", { name: "العميل" })).toBeTruthy();
+    fireEvent.click(screen.getByTestId("customer-view-cards-button"));
+    expect(cardsView.className).toContain("block");
+    expect(tableView.className).toContain("hidden");
+  });
+
   it("يفتح alias تسجيل العميل مرة واحدة وينظف المسار دون إعادة توجيه تكراري", () => {
     window.history.replaceState({}, "", "/customers/new");
     render(<Customers />);
@@ -222,6 +239,7 @@ describe("ترابط تعديل بيانات العميل", () => {
       isError: false,
     });
     render(<Customers />);
+    fireEvent.click(screen.getByTestId("customer-view-table-button"));
     expect(screen.getAllByText("إجمالي المحصل")[0]).toBeTruthy();
     expect(screen.getAllByText("١٬٢٥٠")[0]).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "إجمالي المحصل" }).className).toContain("sticky");
