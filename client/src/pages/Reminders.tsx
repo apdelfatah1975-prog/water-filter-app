@@ -8,7 +8,6 @@ import {
   buildWhatsAppReminderMessage,
   buildWhatsAppBulkReminderMessage,
   buildWhatsAppUrl,
-  COMPANY_WHATSAPP_DISPLAY_PHONE,
   customerMapUrl,
   formatDate,
   visitTypeLabels,
@@ -37,6 +36,7 @@ export default function Reminders() {
   const queryOptions = { retry: false, staleTime: 5_000, refetchInterval: 8_000, refetchOnReconnect: true, refetchOnWindowFocus: false, networkMode: "online" as const };
   const { data: dueReminders, isLoading: dueLoading, isError: dueError } = trpc.filters.reminders.due.useQuery(undefined, queryOptions);
   const { data: alertReminders, isLoading: alertsLoading, isError: alertsError } = trpc.filters.reminders.alerts.useQuery(undefined, queryOptions);
+  const { data: notificationSettings } = trpc.filters.notifications.settings.useQuery(undefined, queryOptions);
   const visibleDueReminders = Array.isArray(dueReminders) ? dueReminders : [];
   const visibleAlertReminders = Array.isArray(alertReminders) ? alertReminders : [];
   const utils = trpc.useUtils();
@@ -124,7 +124,7 @@ export default function Reminders() {
   return (
     <>
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="page-heading">التذكيرات والمتابعة</h1><p className="page-subheading">رسالة واتساب جاهزة قبل الموعد بيوم، ورسالة متابعة يوم الموعد إذا لم يصل رد.</p><p className="mt-2 text-xs font-bold text-emerald-800">رقم واتساب الشركة: <span dir="ltr">{COMPANY_WHATSAPP_DISPLAY_PHONE}</span> — حدد المستحقين أو اضغط زر واتساب لفتح الرسالة الجاهزة ثم اضغط إرسال.</p></div><div className="flex flex-wrap gap-2"><Button onClick={exportReminders} variant="outline" className="h-11 shrink-0 rounded-xl"><Download className="ml-2 h-4 w-4" />Excel</Button><Button onClick={exportRemindersPdf} variant="outline" className="h-11 shrink-0 rounded-xl"><Download className="ml-2 h-4 w-4" />PDF</Button></div></div>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="page-heading">التذكيرات والمتابعة</h1><p className="page-subheading">رسالة واتساب جاهزة قبل الموعد بيوم، ورسالة متابعة يوم الموعد إذا لم يصل رد.</p><p className="mt-2 text-xs font-bold text-emerald-800">رقم واتساب الشركة: <span dir="ltr">{notificationSettings?.companyWhatsAppPhone?.trim() || "غير مسجل"}</span> — حدد المستحقين أو اضغط زر واتساب لفتح الرسالة الجاهزة ثم اضغط إرسال.</p></div><div className="flex flex-wrap gap-2"><Button onClick={exportReminders} variant="outline" className="h-11 shrink-0 rounded-xl"><Download className="ml-2 h-4 w-4" />Excel</Button><Button onClick={exportRemindersPdf} variant="outline" className="h-11 shrink-0 rounded-xl"><Download className="ml-2 h-4 w-4" />PDF</Button></div></div>
       <NotificationSettingsCard />
       <section className="soft-card overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-teal-950/6 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-100 text-amber-700"><BellRing className="h-5 w-5" /></div><div><h2 className="font-extrabold">قائمة المتابعة</h2><p className="mt-1 text-xs text-muted-foreground">{isLoading ? "جارٍ التحميل…" : `${reminders.length} تذكير ظاهر — ${eligibleReminders.length} مستحق للرسائل`}</p></div></div><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" size="sm" onClick={toggleAllEligible} disabled={!eligibleReminders.length} title={eligibleReminders.length ? "تحديد العملاء المستحقين للرسالة" : "لا يوجد عميل مستحق اليوم أو غدًا أو متأخر"} className="rounded-lg">{selectedReminders.length === eligibleReminders.length && eligibleReminders.length ? "إلغاء تحديد المستحقين" : "تحديد المستحقين"}</Button><Button type="button" size="sm" onClick={shareBulkWhatsAppReminder} disabled={!selectedReminders.length} title={selectedReminders.length ? "فتح رسالة واتساب للمستحقين المحددين" : "حدد مستحقًا واحدًا على الأقل أولًا"} className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"><Copy className="ml-1 h-4 w-4" />نسخ رسالة المستحقين ({selectedReminders.length})</Button></div></div>

@@ -6,6 +6,7 @@ import Customers, { addOrIncrementVisitItem, buildPartsConfirmation, getCustomer
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   techniciansList: vi.fn(),
+  settings: vi.fn(),
   createUseMutation: vi.fn(),
   visitUseMutation: vi.fn(),
   updateUseMutation: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("@/lib/trpc", () => ({
         importBulk: { useMutation: mocks.importBulkUseMutation },
       },
       technicians: { list: { useQuery: mocks.techniciansList } },
+      notifications: { settings: { useQuery: mocks.settings } },
       visits: { create: { useMutation: mocks.visitUseMutation } },
       dashboard: { invalidate: mocks.dashboardInvalidate },
       reminders: { due: { invalidate: mocks.remindersInvalidate } },
@@ -70,6 +72,7 @@ describe("ترابط تعديل بيانات العميل", () => {
       isError: false,
     });
     mocks.techniciansList.mockReturnValue({ data: [{ id: 7, name: "أحمد" }], isLoading: false, isError: false });
+    mocks.settings.mockReturnValue({ data: { companyWhatsAppPhone: "201155566677" }, isLoading: false, isError: false });
     mocks.createUseMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     mocks.visitUseMutation.mockImplementation((options: { onSuccess?: (result: { reminderCreated?: boolean }) => void }) => {
       mocks.visitOptions = options;

@@ -6,6 +6,7 @@ import Reminders from "./Reminders";
 const mocks = vi.hoisted(() => ({
   due: vi.fn(),
   alerts: vi.fn(),
+  settings: vi.fn(),
   updateMutation: vi.fn(),
   deleteMutation: vi.fn(),
   invalidate: vi.fn(),
@@ -24,6 +25,9 @@ vi.mock("@/lib/trpc", () => ({
         alerts: { useQuery: mocks.alerts },
         updateStatus: { useMutation: mocks.updateMutation },
         delete: { useMutation: mocks.deleteMutation },
+      },
+      notifications: {
+        settings: { useQuery: mocks.settings },
       },
     },
     useUtils: () => ({
@@ -73,6 +77,7 @@ describe("حالات واتساب اليدوية في التذكيرات", () =>
     vi.spyOn(window, "open").mockImplementation(mocks.open);
     mocks.due.mockReturnValue({ data: [], isLoading: false, isError: false });
     mocks.alerts.mockReturnValue({ data: [], isLoading: false, isError: false });
+    mocks.settings.mockReturnValue({ data: { companyWhatsAppPhone: "201155566677" }, isLoading: false, isError: false });
     mocks.updateMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     mocks.deleteMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
   });
@@ -81,6 +86,14 @@ describe("حالات واتساب اليدوية في التذكيرات", () =>
     cleanup();
     vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  it("يعرض رقم واتساب الشركة المحفوظ بدل الرقم الثابت", () => {
+    render(<Reminders />);
+
+    expect(screen.getByText(/رقم واتساب الشركة:/)).toBeTruthy();
+    expect(screen.getByText("201155566677")).toBeTruthy();
+    expect(screen.queryByText("01008797774")).toBeNull();
   });
 
   it("يبقي التذكير ظاهرًا ويسجل تجهيز رسالة ما قبل الموعد", () => {
