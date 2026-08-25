@@ -1136,13 +1136,15 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
   serviceTypes: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const db = await databaseOrThrow();
-      const existing = await db.select().from(serviceTypes).where(eq(serviceTypes.ownerId, ctx.user.id));
+      const ownerId = await getCompanyOwnerId(ctx.user.id, ctx.user.role);
+      const existing = await db.select().from(serviceTypes).where(eq(serviceTypes.ownerId, ownerId));
       if (!existing.length) {
-        await db.insert(serviceTypes).values(visitTypes.map(code => ({ ownerId: ctx.user.id, code, name: code === "installation" ? "تركيب فلتر" : code === "maintenance" ? "صيانة" : code === "cartridge_change" ? "تغيير شمعات" : code === "follow_up" ? "متابعة" : "أخرى" })));
+        await db.insert(serviceTypes).values(visitTypes.map(code => ({ ownerId, code, name: code === "installation" ? "تركيب فلتر" : code === "maintenance" ? "صيانة" : code === "cartridge_change" ? "تغيير شمعات" : code === "follow_up" ? "متابعة" : "أخرى" })));
       }
-      const types = existing.length ? existing : await db.select().from(serviceTypes).where(eq(serviceTypes.ownerId, ctx.user.id));
-      const mappings = types.length ? await db.select().from(serviceTypeItems).where(and(eq(serviceTypeItems.ownerId, ctx.user.id), inArray(serviceTypeItems.serviceTypeId, types.map(type => type.id)))) : [];
-      const items = await db.select({ id: inventoryItems.id, name: inventoryItems.name, unit: inventoryItems.unit, currentBalance: inventoryItems.openingQuantity }).from(inventoryItems).where(eq(inventoryItems.ownerId, ctx.user.id));
+      const types = existing.length ? existing : await db.select().from(serviceTypes).where(eq(serviceTypes.ownerId, ownerId));
+      const mappings = types.length ? await db.select().from(serviceTypeItems).where(and(eq(serviceTypeItems.ownerId, ownerId), inArray(serviceTypeItems.serviceTypeId, types.map(type => type.id)))) : [];
+      const inventory = await inventorySummary(ownerId);
+      const items = inventory.items.map(item => ({ id: item.id, name: item.name, unit: item.unit, currentBalance: item.currentBalance }));
       return { types, mappings, items };
     }),
     saveMapping: adminProcedure.input(z.object({ serviceTypeId: z.number().int().positive(), inventoryItemId: z.number().int().positive(), defaultQuantity: z.number().int().positive(), isRequired: z.boolean().default(false), allowEditQuantity: z.boolean().default(true) })).mutation(async ({ ctx, input }) => {

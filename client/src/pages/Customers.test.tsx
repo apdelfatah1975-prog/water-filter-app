@@ -6,6 +6,7 @@ import Customers, { addOrIncrementVisitItem, buildPartsConfirmation, getCustomer
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   techniciansList: vi.fn(),
+  serviceTypesList: vi.fn(),
   settings: vi.fn(),
   createUseMutation: vi.fn(),
   visitUseMutation: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock("@/lib/trpc", () => ({
         importBulk: { useMutation: mocks.importBulkUseMutation },
       },
       technicians: { list: { useQuery: mocks.techniciansList } },
+      serviceTypes: { list: { useQuery: mocks.serviceTypesList } },
       notifications: { settings: { useQuery: mocks.settings } },
       visits: { create: { useMutation: mocks.visitUseMutation } },
       dashboard: { invalidate: mocks.dashboardInvalidate },
@@ -72,6 +74,7 @@ describe("ترابط تعديل بيانات العميل", () => {
       isError: false,
     });
     mocks.techniciansList.mockReturnValue({ data: [{ id: 7, name: "أحمد" }], isLoading: false, isError: false });
+    mocks.serviceTypesList.mockReturnValue({ data: { types: [], mappings: [], items: [{ id: 77, name: "ممبرين", unit: "قطعة", currentBalance: 8 }] }, isLoading: false, isError: false });
     mocks.settings.mockReturnValue({ data: { companyWhatsAppPhone: "201155566677" }, isLoading: false, isError: false });
     mocks.createUseMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     mocks.visitUseMutation.mockImplementation((options: { onSuccess?: (result: { reminderCreated?: boolean }) => void }) => {
@@ -177,6 +180,22 @@ describe("ترابط تعديل بيانات العميل", () => {
     fireEvent.click(screen.getByRole("button", { name: "إضافة عميل" }));
     expect(screen.getByText("قطع الغيار والأصناف المستخدمة")).toBeTruthy();
     expect(screen.getByRole("button", { name: "إضافة صنف" })).toBeTruthy();
+  });
+
+  it("يظهر صنف المخزن في بطاقة تسجيل العميل الأول ويحفظه ضمن الزيارة الأولى", () => {
+    const mutate = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    mocks.createUseMutation.mockReturnValue({ mutate, isPending: false });
+    render(<Customers />);
+    fireEvent.click(screen.getByRole("button", { name: "إضافة عميل" }));
+    expect(screen.getByRole("button", { name: /\+ ممبرين/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /\+ ممبرين/ }));
+    expect(screen.getByText("الرصيد المتاح: 8 قطعة")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("اسم العميل"), { target: { value: "عميل صنف مخزن" } });
+    fireEvent.change(screen.getByLabelText("رقم الهاتف"), { target: { value: "0500000002" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "حفظ البيانات" })[0]);
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ items: [{ inventoryItemId: 77, quantity: 1, source: "manual" }] }));
+    confirm.mockRestore();
   });
 
   it("يظهر قياسي TDS ويحفظهما مع العميل الجديد والزيارة الأولى", () => {
