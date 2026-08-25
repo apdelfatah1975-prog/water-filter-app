@@ -3,6 +3,7 @@ export const APP_SETTINGS_KEY = "purepoint-app-settings";
 import { FOLLOW_UP_DAYS } from "@shared/filterBusiness";
 
 export type SalesAgentCommissionMode = "per_filter" | "per_group";
+export type AppFontSize = "small" | "medium" | "large";
 export type SalesAgentProfile = { phone?: string; commissionMode: SalesAgentCommissionMode; commissionValue: number; filtersPerGroup: number };
 
 export type AppSettings = {
@@ -31,6 +32,7 @@ export type AppSettings = {
   backupReminderDays: number;
   confirmDestructiveActions: boolean;
   compactTables: boolean;
+  fontSize: AppFontSize;
   compactCustomersOnMobile: boolean;
   compactVisitsOnMobile: boolean;
   technicianPayroll: Record<string, { monthlySalary: number; installationPercent: number; maintenancePercent: number; phone?: string }>;
@@ -63,6 +65,7 @@ export const defaultAppSettings: AppSettings = {
   backupReminderDays: 7,
   confirmDestructiveActions: true,
   compactTables: false,
+  fontSize: "medium",
   compactCustomersOnMobile: false,
   compactVisitsOnMobile: false,
   technicianPayroll: {},

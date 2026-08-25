@@ -9,6 +9,12 @@ describe("إعدادات التطبيق المحلية", () => {
     expect(getAppSettings()).toMatchObject({ companyName: "شركة اختبار", followUpDays: 120, dashboardShowCash: false, currencyLabel: "" });
   });
 
+  it("تحفظ حجم الخط المختار وتستخدم المتوسط افتراضيًا", () => {
+    expect(defaultAppSettings.fontSize).toBe("medium");
+    saveAppSettings({ fontSize: "large" });
+    expect(getAppSettings().fontSize).toBe("large");
+  });
+
   it("تعيد الإعدادات الافتراضية دون حذف بيانات التطبيق الأخرى", () => {
     localStorage.setItem("purepoint-offline-customers", "[]");
     saveAppSettings({ compactTables: true });

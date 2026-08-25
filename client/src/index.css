@@ -158,6 +158,28 @@
 }
 
 
+/* شبكة Excel لجدول العملاء: حدود الخلايا متجاورة وواضحة دون فراغات بينية */
+.customer-excel-table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+.customer-excel-table th,
+.customer-excel-table td {
+  border: 1px solid rgb(153 190 185 / 0.78);
+  vertical-align: middle;
+}
+.customer-excel-table th {
+  border-color: rgb(112 170 163 / 0.9);
+}
+.customer-excel-table .customer-excel-row {
+  height: 2.5rem;
+}
+
+/* تفضيل حجم الخط العام: يعتمد على rem كي تتدرج العناوين والحقول معًا */
+html[data-font-size="small"] { font-size: 15px; }
+html[data-font-size="medium"] { font-size: 16px; }
+html[data-font-size="large"] { font-size: 18px; }
+
 @media (max-width: 767px) {
   .compact-mobile-visit-table th:nth-child(3),
   .compact-mobile-visit-table td:nth-child(3),

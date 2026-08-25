@@ -65,6 +65,7 @@ import { InstallAppButton } from "./InstallAppButton";
 import { countPendingReminders, countPendingWorkOrders } from "@/lib/notificationBadges";
 import { formatLastRefreshTime, getAutoRefreshSettings, isEditingFormElement, setAutoRefreshSettings, type AutoRefreshIntervalMinutes } from "@/lib/autoRefresh";
 import { getBackupSuccessCopy } from "@/lib/backupFeedback";
+import { getAppSettings, type AppFontSize, type AppSettings } from "@/lib/appSettings";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "الرئيسية", path: "/" },
@@ -98,9 +99,30 @@ const mobileNavItems = [
   menuItems.find(item => item.path === "/settings")!,
 ];
 
+function isAppFontSize(value: unknown): value is AppFontSize {
+  return value === "small" || value === "medium" || value === "large";
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAuth();
   const [, setLocation] = useLocation();
+  const [fontSize, setFontSize] = React.useState<AppFontSize>(() => getAppSettings().fontSize);
+
+  React.useEffect(() => {
+    const handleSettingsChange = (event: Event) => {
+      const next = (event as CustomEvent<Partial<AppSettings>>).detail?.fontSize;
+      if (isAppFontSize(next)) setFontSize(next);
+    };
+    window.addEventListener("purepoint-settings-changed", handleSettingsChange);
+    return () => window.removeEventListener("purepoint-settings-changed", handleSettingsChange);
+  }, []);
+
+  React.useEffect(() => {
+    document.documentElement.dataset.fontSize = fontSize;
+    return () => {
+      delete document.documentElement.dataset.fontSize;
+    };
+  }, [fontSize]);
 
   React.useEffect(() => {
     if (!loading && user && user.role !== "admin" && window.location.pathname !== "/technician-app") setLocation("/technician-app");
@@ -124,7 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <SidebarProvider defaultOpen={true} dir="rtl" className="min-w-0 max-w-full overflow-x-hidden">
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      <DashboardLayoutContent fontSize={fontSize}>{children}</DashboardLayoutContent>
     </SidebarProvider>
   );
 }
@@ -170,7 +192,7 @@ function LocalLoginScreen() {
   );
 }
 
-function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
+function DashboardLayoutContent({ children, fontSize }: { children: React.ReactNode; fontSize: AppFontSize }) {
   const { user, loading, logout } = useAuth();
   const technicianPermissions = trpc.filters.allowedTechnicians.myPermissions.useQuery(undefined, { enabled: Boolean(user && user.role !== "admin"), retry: false, staleTime: 60_000 });
   const fetchingCount = useIsFetching();
@@ -436,7 +458,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             ) : null}
           </div>
         </header>
-        <main className="min-h-[calc(100dvh-3.5rem)] min-w-0 overflow-x-hidden px-2.5 pb-28 pt-3 sm:min-h-[calc(100vh-4rem)] sm:px-6 sm:pb-28 sm:pt-6 lg:px-8 lg:pb-8 lg:pt-8">{children}</main>
+        <main data-font-size={fontSize} className="min-h-[calc(100dvh-3.5rem)] min-w-0 overflow-x-hidden px-2.5 pb-28 pt-3 sm:min-h-[calc(100vh-4rem)] sm:px-6 sm:pb-28 sm:pt-6 lg:px-8 lg:pb-8 lg:pt-8">{children}</main>
       </SidebarInset>
       {isMobile ? <nav data-print-hide="true" aria-label="التنقل السريع" className="fixed inset-x-0 bottom-0 z-40 min-h-[5.75rem] border-t border-teal-950/10 bg-white/95 px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(13,82,76,.10)] backdrop-blur-lg">
         <div className="mx-auto flex h-full max-w-full gap-1 overflow-x-auto overscroll-x-contain px-1 [scrollbar-width:thin]">

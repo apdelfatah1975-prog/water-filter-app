@@ -147,8 +147,11 @@ describe("ترابط تعديل بيانات العميل", () => {
     render(<Customers />);
     expect(screen.getByTestId("customer-card-12").className).toContain("p-2");
     fireEvent.click(screen.getByTestId("customer-view-table-button"));
+    const table = screen.getByTestId("customer-view-table").querySelector("table");
     const customerRow = screen.getByTestId("customer-view-table").querySelector("tbody tr");
-    expect(customerRow?.className).toContain("h-11");
+    expect(table?.className).toContain("customer-excel-table");
+    expect(customerRow?.className).toContain("h-10");
+    expect(customerRow?.className).toContain("customer-excel-row");
     expect(customerRow?.querySelector("td")?.className).toContain("py-0.5");
   });
 

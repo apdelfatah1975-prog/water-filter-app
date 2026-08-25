@@ -83,6 +83,16 @@ describe("صفحة الإعدادات", () => {
     expect(mocks.location).toHaveBeenCalledWith("/pending-operations");
   });
 
+  it("تعرض اختيار حجم الخط بثلاث درجات واضحة", () => {
+    render(<Settings />);
+
+    const fontSize = screen.getByRole("combobox", { name: "حجم الخط" }) as HTMLSelectElement;
+    expect(fontSize.value).toBe("medium");
+    expect(Array.from(fontSize.options).map(option => option.value)).toEqual(["small", "medium", "large"]);
+    fireEvent.change(fontSize, { target: { value: "large" } });
+    expect(fontSize.value).toBe("large");
+  });
+
   it("تعرض إعداد الرقم السري وتسمح بإرساله من صفحة الإعدادات", () => {
     render(<Settings />);
 
