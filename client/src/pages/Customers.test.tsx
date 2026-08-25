@@ -143,6 +143,15 @@ describe("ترابط تعديل بيانات العميل", () => {
     expect(tableView.className).toContain("hidden");
   });
 
+  it("يستخدم تخطيطًا مضغوطًا للبطاقات وصفوف الجدول", () => {
+    render(<Customers />);
+    expect(screen.getByTestId("customer-card-12").className).toContain("p-2.5");
+    fireEvent.click(screen.getByTestId("customer-view-table-button"));
+    const customerRow = screen.getByTestId("customer-view-table").querySelector("tbody tr");
+    expect(customerRow?.className).toContain("h-11");
+    expect(customerRow?.querySelector("td")?.className).toContain("py-0.5");
+  });
+
   it("يفتح alias تسجيل العميل مرة واحدة وينظف المسار دون إعادة توجيه تكراري", () => {
     window.history.replaceState({}, "", "/customers/new");
     render(<Customers />);
