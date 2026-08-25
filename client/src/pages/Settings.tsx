@@ -67,6 +67,9 @@ export default function Settings() {
   const syncSectionRef = useRef<HTMLDetailsElement | null>(null);
   const [activeWhatsAppPanel, setActiveWhatsAppPanel] = useState<"manual" | "official" | null>(null);
   const [whatsappDialogOpen, setWhatsAppDialogOpen] = useState(false);
+  const [metaCredentials, setMetaCredentials] = useState({ phoneNumberId: "", businessAccountId: "", accessToken: "" });
+  const [showMetaToken, setShowMetaToken] = useState(false);
+  const [metaCredentialsSaved, setMetaCredentialsSaved] = useState(false);
   const [, setLocation] = useLocation();
   const restoreCustomer = trpc.filters.customers.create.useMutation();
   const restoreVisit = trpc.filters.visits.create.useMutation();
@@ -171,6 +174,11 @@ export default function Settings() {
   function closeWhatsAppPanel() {
     setWhatsAppDialogOpen(false);
     setActiveWhatsAppPanel(null);
+  }
+
+  function saveMetaCredentialsDraft() {
+    setMetaCredentialsSaved(true);
+    toast.success("تم حفظ بيانات الربط مؤقتًا لهذه الجلسة دون تفعيل الإرسال");
   }
 
   function openSyncSettings() {
@@ -361,8 +369,14 @@ export default function Settings() {
           <div><h3 className="font-extrabold">استيراد موقع من واتساب</h3><p className="mt-1 text-sm leading-7">افتح نموذج عميل جديد، ثم الصق رابط الموقع أو الإحداثيات التي أرسلها العميل في حقل الموقع. سيحتفظ التطبيق بالرابط ويستخرج الإحداثيات المتاحة تلقائياً.</p></div>
           <Button type="button" onClick={() => { closeWhatsAppPanel(); setLocation("/customers/new"); }} className="rounded-xl bg-emerald-700 hover:bg-emerald-800"><ArrowLeft className="ml-1 h-4 w-4" />فتح نموذج العميل</Button>
         </div> : <div data-testid="whatsapp-card-panel" className="space-y-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
-          <div><h3 className="font-extrabold">Meta WhatsApp Cloud API</h3><p className="mt-1 text-sm leading-7">الحالة الحالية: <strong>غير مهيأ</strong>. الواجهة جاهزة مستقبلاً لإضافة بيانات Meta من خلال إعداد آمن على الخادم، ولا تطلب أي أسرار الآن ولا ترسل رسائل فعلية.</p></div>
-          <div className="flex flex-wrap gap-2 text-xs font-bold"><span className="rounded-full bg-white px-3 py-1">Meta Business</span><span className="rounded-full bg-white px-3 py-1">Phone Number ID</span><span className="rounded-full bg-white px-3 py-1">Access Token</span><span className="rounded-full bg-white px-3 py-1">Webhook</span></div>
+          <div><h3 className="font-extrabold">Meta WhatsApp Cloud API</h3><p className="mt-1 text-sm leading-7">الحالة الحالية: <strong>غير مهيأ</strong>. يمكنك كتابة أو لصق بيانات الربط هنا الآن. لن تُرسل رسائل ولن يتم تفعيل التكامل قبل تجهيز الربط الآمن على الخادم.</p></div>
+          <form className="space-y-3" onSubmit={event => { event.preventDefault(); saveMetaCredentialsDraft(); }}>
+            <label className="block"><span className="field-label">Phone Number ID</span><input data-testid="meta-phone-number-id" dir="ltr" type="text" className="field-input text-left" value={metaCredentials.phoneNumberId} onChange={event => { setMetaCredentialsSaved(false); setMetaCredentials(current => ({ ...current, phoneNumberId: event.target.value })); }} placeholder="مثال: 123456789012345" autoComplete="off" /></label>
+            <label className="block"><span className="field-label">WhatsApp Business Account ID</span><input data-testid="meta-business-account-id" dir="ltr" type="text" className="field-input text-left" value={metaCredentials.businessAccountId} onChange={event => { setMetaCredentialsSaved(false); setMetaCredentials(current => ({ ...current, businessAccountId: event.target.value })); }} placeholder="مثال: 987654321098765" autoComplete="off" /></label>
+            <label className="block"><span className="field-label">Access Token</span><div className="flex items-center gap-2"><input data-testid="meta-access-token" dir="ltr" type={showMetaToken ? "text" : "password"} className="field-input min-w-0 flex-1 text-left" value={metaCredentials.accessToken} onChange={event => { setMetaCredentialsSaved(false); setMetaCredentials(current => ({ ...current, accessToken: event.target.value })); }} placeholder="ألصق رمز الوصول هنا" autoComplete="new-password" /><Button type="button" variant="outline" aria-label={showMetaToken ? "إخفاء رمز الوصول" : "إظهار رمز الوصول"} onClick={() => setShowMetaToken(value => !value)} className="h-11 shrink-0 rounded-xl px-3">{showMetaToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></div></label>
+            <div className="flex flex-wrap items-center gap-2"><Button type="submit" className="rounded-xl bg-sky-700 hover:bg-sky-800">حفظ بيانات الربط مؤقتًا</Button><span className="text-xs font-bold text-sky-800">{metaCredentialsSaved ? "تم الحفظ لهذه الجلسة — غير مهيأ للإرسال" : "يمكن الكتابة واللصق مباشرة في الحقول"}</span></div>
+          </form>
+          <p className="rounded-xl bg-white/80 px-3 py-2 text-xs leading-6 text-sky-900">تنبيه أمني: رمز الوصول لا يُحفظ في قاعدة البيانات أو التخزين المحلي من هذه الشاشة؛ سيظل التكامل «غير مهيأ» حتى يتم ربطه لاحقًا من خلال إعداد سري على الخادم.</p>
         </div>}
         <DialogFooter><Button type="button" variant="outline" className="rounded-xl" onClick={closeWhatsAppPanel}>إغلاق</Button></DialogFooter>
       </DialogContent>

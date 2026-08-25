@@ -60,6 +60,22 @@ describe("صفحة الإعدادات", () => {
     expect(screen.getByText("Access Token")).toBeTruthy();
   });
 
+  it("تقبل حقول Meta الرسمية الكتابة واللصق وتحفظ المسودة دون تفعيل الإرسال", () => {
+    render(<Settings />);
+
+    fireEvent.click(screen.getByTestId("whatsapp-official-card"));
+    fireEvent.change(screen.getByTestId("meta-phone-number-id"), { target: { value: "123456789012345" } });
+    fireEvent.change(screen.getByTestId("meta-business-account-id"), { target: { value: "987654321098765" } });
+    fireEvent.change(screen.getByTestId("meta-access-token"), { target: { value: "EAAB-example-token" } });
+
+    expect((screen.getByTestId("meta-phone-number-id") as HTMLInputElement).value).toBe("123456789012345");
+    expect((screen.getByTestId("meta-business-account-id") as HTMLInputElement).value).toBe("987654321098765");
+    expect((screen.getByTestId("meta-access-token") as HTMLInputElement).value).toBe("EAAB-example-token");
+    fireEvent.click(screen.getByRole("button", { name: "حفظ بيانات الربط مؤقتًا" }));
+    expect(screen.getByText("تم الحفظ لهذه الجلسة — غير مهيأ للإرسال")).toBeTruthy();
+    expect(mocks.success).toHaveBeenCalledWith("تم حفظ بيانات الربط مؤقتًا لهذه الجلسة دون تفعيل الإرسال");
+  });
+
   it("يفتح شاشة حالة المزامنة من قسم الاتصال والمزامنة", () => {
     render(<Settings />);
 
