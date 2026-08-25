@@ -84,9 +84,24 @@ describe("واجهات إدارة فلاتر المياه", () => {
 
     await expect(caller.filters.customers.create({ name: "عميل جديد", phone: "01000000000", manualCode: "م-١٢", firstVisitType: "installation", firstVisitDate: visitDate, firstTechnicianName: "أحمد", firstCollectedAmount: 12500, firstCollectedCurrency: "SAR" })).resolves.toMatchObject({ id: 77, firstVisitCreated: true, reminderCreated: true });
     expect(insertCalls.find(call => call.table === customers)?.values).toMatchObject({ manualCode: "م-١٢" });
-    expect(insertCalls.find(call => call.table === visits)?.values).toMatchObject({ customerId: 77, visitType: "installation", assignedTechnicianId: 9, technicianName: "أحمد", visitDate });
+    expect(insertCalls.find(call => call.table === visits)?.values).toMatchObject({ customerId: 77, visitType: "installation", assignedTechnicianId: 9, technicianName: "أحمد", visitDate, nextVisitDate: new Date("2026-05-01T09:00:00.000Z") });
+    expect(insertCalls.find(call => call.table === reminders)?.values).toMatchObject({ reminderDate: new Date("2026-05-01T09:00:00.000Z") });
     expect(insertCalls.find(call => call.table === cashTransactions)?.values).toMatchObject({ sourceVisitId: 88, amount: 12500, currency: "SAR", category: "تحصيل تركيب" });
     expect(insertCalls.filter(call => call.table === reminders)).toHaveLength(1);
+  });
+
+  it("يحفظ مدة متابعة مخصصة عند إنشاء العميل لأول مرة", async () => {
+    const insertCalls: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const db = {
+      select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
+      insert: (table: unknown) => ({ values: async (values: Record<string, unknown>) => { insertCalls.push({ table, values }); return [{ insertId: table === customers ? 91 : table === visits ? 92 : 0 }]; } }),
+      update: () => ({ set: () => ({ where: async () => undefined }) }),
+    };
+    vi.mocked(getDb).mockResolvedValue(db as never);
+    const visitDate = new Date("2026-02-10T09:00:00.000Z");
+    await expect(appRouter.createCaller(createContext()).filters.customers.create({ name: "عميل بمدة مخصصة", phone: "01000000001", firstVisitType: "maintenance", firstVisitDate: visitDate, followUpDays: 60 })).resolves.toMatchObject({ id: 91, firstVisitCreated: true, reminderCreated: true });
+    expect(insertCalls.find(call => call.table === visits)?.values.nextVisitDate).toEqual(new Date("2026-04-11T09:00:00.000Z"));
+    expect(insertCalls.find(call => call.table === reminders)?.values.reminderDate).toEqual(new Date("2026-04-11T09:00:00.000Z"));
   });
 
   it("يمرر قياسات TDS الاختيارية إلى INSERT الزيارة", async () => {

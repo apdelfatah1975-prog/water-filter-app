@@ -79,6 +79,7 @@ function normalizeCustomerName(name: string) {
 const customerCreateInput = customerInput.extend({
   firstVisitType: z.enum(visitTypes).optional(),
   firstVisitDate: z.date().optional(),
+  followUpDays: z.number().int().min(0).max(3650).optional(),
   firstTechnicianName: z.string().trim().max(160).optional().nullable(),
   firstTechnicianId: z.number().int().positive().optional().nullable(),
   firstSalesAgentName: z.string().trim().max(160).optional().nullable(),
@@ -866,7 +867,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         )).limit(1);
         if (existing[0]) return { id: existing[0].id, alreadySynced: true };
       }
-      const { clientOperationId, firstVisitType, firstVisitDate, firstTechnicianName, firstTechnicianId, firstSalesAgentName, firstFilterCount, firstTdsIn, firstTdsOut, firstVisitResult, firstVisitNotes, firstCollectedAmount, firstCollectedCurrency, items, ...data } = input;
+      const { clientOperationId, firstVisitType, firstVisitDate, followUpDays, firstTechnicianName, firstTechnicianId, firstSalesAgentName, firstFilterCount, firstTdsIn, firstTdsOut, firstVisitResult, firstVisitNotes, firstCollectedAmount, firstCollectedCurrency, items, ...data } = input;
       const assignedTechnician = await resolveAssignedTechnician(ownerId, ctx.user.role === "user" ? ctx.user.id : null, firstTechnicianId, firstTechnicianName);
       const storedTechnicianName = assignedTechnician?.name ?? firstTechnicianName ?? null;
       const existingNames = await db.select({ id: customers.id, name: customers.name }).from(customers).where(eq(customers.ownerId, ownerId)).limit(100000);
@@ -884,7 +885,8 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         return { id: customerId, alreadySynced: false, firstVisitCreated: false };
       }
       const visitDate = firstVisitDate ?? new Date();
-      const visitResult = await db.insert(visits).values({ customerId, ownerId, visitType: firstVisitType, visitDate, technicianName: storedTechnicianName, assignedTechnicianId: assignedTechnician?.id ?? null, salesAgentName: firstSalesAgentName ?? null, filterCount: firstFilterCount, tdsIn: firstTdsIn ?? null, tdsOut: firstTdsOut ?? null, visitResult: firstVisitResult ?? null, notes: firstVisitNotes ?? null });
+      const nextVisitDate = needsAutomaticReminder(firstVisitType) ? followUpDate(visitDate, followUpDays) : null;
+      const visitResult = await db.insert(visits).values({ customerId, ownerId, visitType: firstVisitType, visitDate, nextVisitDate, technicianName: storedTechnicianName, assignedTechnicianId: assignedTechnician?.id ?? null, salesAgentName: firstSalesAgentName ?? null, filterCount: firstFilterCount, tdsIn: firstTdsIn ?? null, tdsOut: firstTdsOut ?? null, visitResult: firstVisitResult ?? null, notes: firstVisitNotes ?? null });
       const visitId = Number(visitResult[0].insertId);
       const inventoryRows = items.length ? await db.select().from(inventoryItems).where(and(eq(inventoryItems.ownerId, ownerId), inArray(inventoryItems.id, items.map(item => item.inventoryItemId)))) : [];
       const inventoryById = new Map(inventoryRows.map(item => [item.id, item]));
@@ -901,15 +903,15 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         await db.insert(visitItems).values({ ownerId, visitId, inventoryItemId: inventoryItem.id, itemNameSnapshot: inventoryItem.name, unitSnapshot: inventoryItem.unit, quantity: requested.quantity, source: requested.source, clientOperationId: operationId });
         await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: inventoryItem.id, movementType: "outgoing", quantity: requested.quantity, unitCost: inventoryItem.defaultUnitCost, currency: "SAR", movementDate: visitDate, technicianName: storedTechnicianName, notes: `منصرف تلقائي من أول زيارة للعميل ${input.name}`, clientOperationId: operationId });
       }
-      if (needsAutomaticReminder(firstVisitType)) {
-        await db.insert(reminders).values({ customerId, visitId, ownerId, reminderDate: followUpDate(visitDate) });
+      if (nextVisitDate) {
+        await db.insert(reminders).values({ customerId, visitId, ownerId, reminderDate: nextVisitDate });
       }
       if (firstCollectedAmount > 0) {
         const category = firstVisitType === "installation" ? "تحصيل تركيب" : firstVisitType === "maintenance" ? "تحصيل صيانة" : firstVisitType === "cartridge_change" ? "تحصيل تغيير شمعات" : "تحصيل زيارة";
         await db.insert(cashTransactions).values({ ownerId, transactionType: "income", currency: firstCollectedCurrency, amount: firstCollectedAmount, category, transactionDate: visitDate, sourceVisitId: visitId, recipientName: storedTechnicianName, notes: storedTechnicianName ? `العميل: ${input.name} | إيراد أُنشئ تلقائيًا من أول زيارة بواسطة ${storedTechnicianName}` : `العميل: ${input.name} | إيراد أُنشئ تلقائيًا من أول زيارة` });
       }
       await refreshOwnerBackup(ownerId);
-      return { id: customerId, alreadySynced: false, firstVisitCreated: true, reminderCreated: needsAutomaticReminder(firstVisitType) };
+      return { id: customerId, alreadySynced: false, firstVisitCreated: true, reminderCreated: Boolean(nextVisitDate) };
     }),
     importBulk: protectedProcedure.input(z.object({ rows: z.array(customerImportRowInput).min(1).max(1000) })).mutation(async ({ ctx, input }) => {
       const db = await databaseOrThrow();
