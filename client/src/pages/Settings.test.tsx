@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   mutate: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
+  location: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -37,11 +38,31 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error } }));
+vi.mock("wouter", () => ({ useLocation: () => ["/settings", mocks.location] }));
 
 describe("صفحة الإعدادات", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+  });
+
+  it("تفتح بطاقتا واتساب تفاصيلهما عند النقر وتبقى حالة API غير مهيأة", () => {
+    render(<Settings />);
+
+    fireEvent.click(screen.getByTestId("whatsapp-manual-card"));
+    expect(screen.getByTestId("whatsapp-card-panel")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "فتح نموذج العميل" })).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("whatsapp-official-card"));
+    expect(screen.getByTestId("whatsapp-card-panel").textContent).toContain("غير مهيأ");
+    expect(screen.getByText("Access Token")).toBeTruthy();
+  });
+
+  it("يفتح شاشة حالة المزامنة من قسم الاتصال والمزامنة", () => {
+    render(<Settings />);
+
+    fireEvent.click(screen.getByRole("button", { name: "فتح حالة المزامنة" }));
+    expect(mocks.location).toHaveBeenCalledWith("/pending-operations");
   });
 
   it("تعرض إعداد الرقم السري وتسمح بإرساله من صفحة الإعدادات", () => {

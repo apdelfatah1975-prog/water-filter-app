@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { CloudOff, RefreshCw, Server, Wifi } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, CloudOff, RefreshCw, Server, Wifi } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 
 /**
@@ -43,24 +43,32 @@ export default function PendingOperations() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <article className="rounded-2xl border border-teal-100 bg-white p-5 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-700"><Server className="h-5 w-5" /></div>
-            <div>
-              <h2 className="font-black text-slate-900">المصدر الوحيد للبيانات</h2>
-              <p className="mt-2 text-sm leading-7 text-slate-600">يقرأ التطبيق البيانات من واجهات API المركزية، وتظهر التحديثات للأجهزة الأخرى بعد إعادة الجلب التلقائي.</p>
+        <Link href="/settings?section=sync" data-testid="connection-settings-card" aria-label="فتح إعدادات الاتصال والمصدر المركزي" className="group block rounded-2xl border border-teal-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 active:scale-[.99]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-700"><Server className="h-5 w-5" /></div>
+              <div>
+                <h2 className="font-black text-slate-900">المصدر الوحيد للبيانات</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">يقرأ التطبيق البيانات من واجهات API المركزية، وتظهر التحديثات للأجهزة الأخرى بعد إعادة الجلب التلقائي.</p>
+              </div>
             </div>
+            <ArrowLeft className="mt-1 h-5 w-5 shrink-0 text-teal-700 transition-transform group-hover:-translate-x-1" aria-hidden="true" />
           </div>
-        </article>
-        <article className="rounded-2xl border border-sky-100 bg-sky-50/60 p-5 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-sky-700"><RefreshCw className="h-5 w-5" /></div>
-            <div>
-              <h2 className="font-black text-slate-900">التحديث التلقائي مفعل</h2>
-              <p className="mt-2 text-sm leading-7 text-slate-600">تحدّث القوائم المشتركة دورياً كل 8 ثوانٍ، كما تعيد المحاولة تلقائياً عند عودة الاتصال.</p>
+          <span className="mt-4 inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-extrabold text-teal-800">اضغط لفتح إعدادات الاتصال</span>
+        </Link>
+        <Link href="/settings?section=sync" data-testid="sync-settings-card" aria-label="فتح إعدادات المزامنة والتحديث التلقائي" className="group block rounded-2xl border border-sky-100 bg-sky-50/60 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 active:scale-[.99]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-sky-700"><RefreshCw className="h-5 w-5" /></div>
+              <div>
+                <h2 className="font-black text-slate-900">التحديث التلقائي مفعل</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">تحدّث القوائم المشتركة دورياً كل 8 ثوانٍ، كما تعيد المحاولة تلقائياً عند عودة الاتصال.</p>
+              </div>
             </div>
+            <ArrowLeft className="mt-1 h-5 w-5 shrink-0 text-sky-700 transition-transform group-hover:-translate-x-1" aria-hidden="true" />
           </div>
-        </article>
+          <span className="mt-4 inline-flex rounded-full bg-white px-3 py-1 text-xs font-extrabold text-sky-800">اضغط لفتح إعدادات المزامنة</span>
+        </Link>
       </section>
 
       <div className="mt-5 flex flex-wrap gap-2">
