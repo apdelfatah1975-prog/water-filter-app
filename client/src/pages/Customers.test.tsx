@@ -180,6 +180,18 @@ describe("ترابط تعديل بيانات العميل", () => {
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ firstTdsIn: 420, firstTdsOut: 38 }));
   });
 
+  it("يرسل مدة المتابعة المخصصة عند إضافة عميل جديد", () => {
+    const mutate = vi.fn();
+    mocks.createUseMutation.mockReturnValue({ mutate, isPending: false });
+    render(<Customers />);
+    fireEvent.click(screen.getByRole("button", { name: "إضافة عميل" }));
+    fireEvent.change(screen.getByLabelText("اسم العميل"), { target: { value: "عميل متابعة" } });
+    fireEvent.change(screen.getByLabelText("رقم الهاتف"), { target: { value: "0500000001" } });
+    fireEvent.change(screen.getByLabelText("عدد أيام المتابعة للعميل الجديد"), { target: { value: "60" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "حفظ البيانات" })[0]);
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ followUpDays: 60 }));
+  });
+
   it("يجمع عدة أصناف مختلفة داخل زيارة واحدة دون استبدال الصنف السابق", () => {
     const catalog = [
       { id: 1, name: "فلتر جامبو" },
