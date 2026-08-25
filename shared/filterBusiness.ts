@@ -18,9 +18,10 @@ export function needsAutomaticReminder(visitType: VisitType) {
   return visitType === "installation" || visitType === "maintenance";
 }
 
-export function followUpDate(visitDate: Date) {
+export function followUpDate(visitDate: Date, followUpDays = FOLLOW_UP_DAYS) {
+  const safeDays = Number.isFinite(followUpDays) && followUpDays >= 0 ? Math.floor(followUpDays) : FOLLOW_UP_DAYS;
   const dueDate = new Date(visitDate);
-  dueDate.setUTCDate(dueDate.getUTCDate() + FOLLOW_UP_DAYS);
+  dueDate.setUTCDate(dueDate.getUTCDate() + safeDays);
   return dueDate;
 }
 

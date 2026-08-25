@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import { alertDateForReminder, calculateStockBalance, customerCode, followUpDate, followUpSummaryFromVisits, isAlertReady, isReminderAlertActive, mergeDashboardReminderAlerts, needsAutomaticReminder } from "../shared/filterBusiness";
 
 describe("منطق تطبيق فلاتر المياه", () => {
-  it("ينشئ موعد المتابعة بعد 120 يومًا من تاريخ الزيارة", () => {
+  it("ينشئ موعد المتابعة بعد 120 يومًا من تاريخ الزيارة افتراضيًا", () => {
     const visitDate = new Date("2026-01-01T00:00:00.000Z");
     expect(followUpDate(visitDate).toISOString()).toBe("2026-05-01T00:00:00.000Z");
+  });
+
+  it("يسمح بمدة متابعة مخصصة أثناء تسجيل الزيارة", () => {
+    const visitDate = new Date("2026-01-01T00:00:00.000Z");
+    expect(followUpDate(visitDate, 60).toISOString()).toBe("2026-03-02T00:00:00.000Z");
   });
 
   it("يُنشئ تذكيرًا للتركيب والصيانة فقط", () => {

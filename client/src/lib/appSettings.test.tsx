@@ -6,7 +6,7 @@ describe("إعدادات التطبيق المحلية", () => {
 
   it("تحفظ التغييرات وتدمجها مع القيم الافتراضية", () => {
     saveAppSettings({ companyName: "شركة اختبار", followUpDays: 90, dashboardShowCash: false });
-    expect(getAppSettings()).toMatchObject({ companyName: "شركة اختبار", followUpDays: 90, dashboardShowCash: false, currencyLabel: "" });
+    expect(getAppSettings()).toMatchObject({ companyName: "شركة اختبار", followUpDays: 120, dashboardShowCash: false, currencyLabel: "" });
   });
 
   it("تعيد الإعدادات الافتراضية دون حذف بيانات التطبيق الأخرى", () => {

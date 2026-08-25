@@ -1,5 +1,7 @@
 export const APP_SETTINGS_KEY = "purepoint-app-settings";
 
+import { FOLLOW_UP_DAYS } from "@shared/filterBusiness";
+
 export type SalesAgentCommissionMode = "per_filter" | "per_group";
 export type SalesAgentProfile = { phone?: string; commissionMode: SalesAgentCommissionMode; commissionValue: number; filtersPerGroup: number };
 
@@ -77,14 +79,14 @@ export function getAppSettings(): AppSettings {
     const raw = localStorage.getItem(APP_SETTINGS_KEY);
     if (!raw) return { ...defaultAppSettings };
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
-    return { ...defaultAppSettings, ...parsed };
+    return { ...defaultAppSettings, ...parsed, followUpDays: FOLLOW_UP_DAYS };
   } catch {
     return { ...defaultAppSettings };
   }
 }
 
 export function saveAppSettings(patch: Partial<AppSettings>): AppSettings {
-  const next = { ...getAppSettings(), ...patch };
+  const next = { ...getAppSettings(), ...patch, followUpDays: FOLLOW_UP_DAYS };
   if (canUseStorage()) localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("purepoint-settings-changed", { detail: next }));
   return next;

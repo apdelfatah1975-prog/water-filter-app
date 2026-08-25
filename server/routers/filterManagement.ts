@@ -133,6 +133,7 @@ const visitInput = z.object({
   visitType: z.enum(visitTypes),
   visitDate: z.date(),
   nextVisitDate: z.date().optional().nullable(),
+  followUpDays: z.number().int().min(0).max(3650).optional(),
   technicianName: z.string().trim().max(160).optional().nullable(),
   assignedTechnicianId: z.number().int().positive().optional().nullable(),
   salesAgentName: z.string().trim().max(160).optional().nullable(),
@@ -1192,7 +1193,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         }
       }
       const customer = await getOwnedCustomer(ownerId, input.customerId);
-      const { clientOperationId, collectedAmount, collectedCurrency, items, phone: _phone, technicianName: inputTechnicianName, assignedTechnicianId: requestedTechnicianId, ...visitData } = input;
+      const { clientOperationId, collectedAmount, collectedCurrency, items, phone: _phone, followUpDays: requestedFollowUpDays, technicianName: inputTechnicianName, assignedTechnicianId: requestedTechnicianId, ...visitData } = input;
       const assignedTechnician = await resolveAssignedTechnician(ownerId, ctx.user.role === "user" ? ctx.user.id : null, requestedTechnicianId, inputTechnicianName);
       const storedTechnicianName = assignedTechnician?.name ?? inputTechnicianName ?? null;
       const inventoryRows = items.length ? await db.select().from(inventoryItems).where(and(eq(inventoryItems.ownerId, ownerId), inArray(inventoryItems.id, items.map(item => item.inventoryItemId)))) : [];
@@ -1225,7 +1226,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
           customerId: input.customerId,
           visitId,
           ownerId,
-          reminderDate: input.nextVisitDate ?? followUpDate(input.visitDate),
+          reminderDate: input.nextVisitDate ?? followUpDate(input.visitDate, requestedFollowUpDays),
         });
       }
       if (collectedAmount && collectedAmount > 0) {
