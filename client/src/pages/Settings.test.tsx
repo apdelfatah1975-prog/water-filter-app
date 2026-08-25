@@ -50,10 +50,12 @@ describe("صفحة الإعدادات", () => {
     render(<Settings />);
 
     fireEvent.click(screen.getByTestId("whatsapp-manual-card"));
+    expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByTestId("whatsapp-card-panel")).toBeTruthy();
     expect(screen.getByRole("button", { name: "فتح نموذج العميل" })).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("whatsapp-official-card"));
+    expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByTestId("whatsapp-card-panel").textContent).toContain("غير مهيأ");
     expect(screen.getByText("Access Token")).toBeTruthy();
   });
