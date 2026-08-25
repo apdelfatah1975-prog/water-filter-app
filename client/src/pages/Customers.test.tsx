@@ -153,9 +153,13 @@ describe("ترابط تعديل بيانات العميل", () => {
     const table = screen.getByTestId("customer-view-table").querySelector("table");
     const customerRow = screen.getByTestId("customer-view-table").querySelector("tbody tr");
     expect(table?.className).toContain("customer-excel-table");
+    expect(table?.className).toContain("min-w-0");
+    expect(table?.className).toContain("max-w-full");
     expect(customerRow?.className).toContain("h-10");
     expect(customerRow?.className).toContain("customer-excel-row");
     expect(customerRow?.querySelector("td")?.className).toContain("py-0.5");
+    expect(screen.getByRole("columnheader", { name: "إجراءات" }).className).toContain("md:table-cell");
+    expect(screen.getByRole("columnheader", { name: "إجراءات" }).className).toContain("hidden");
   });
 
   it("يفتح alias تسجيل العميل مرة واحدة وينظف المسار دون إعادة توجيه تكراري", () => {

@@ -160,6 +160,9 @@
 
 /* شبكة Excel لجدول العملاء: حدود الخلايا متجاورة وواضحة دون فراغات بينية */
 .customer-excel-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   border-spacing: 0;
 }
@@ -167,12 +170,65 @@
 .customer-excel-table td {
   border: 1px solid rgb(153 190 185 / 0.78);
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 .customer-excel-table th {
   border-color: rgb(112 170 163 / 0.9);
+  padding: 0.3rem 0.4rem;
+  line-height: 1.2;
 }
-.customer-excel-table .customer-excel-row {
-  height: 2.5rem;
+.customer-excel-table td {
+  padding: 0.2rem 0.35rem;
+  line-height: 1.2;
+}
+.customer-excel-table .customer-excel-row,
+.customer-excel-table .customer-excel-row > td {
+  height: 2.25rem;
+}
+.customer-excel-table .customer-table-actions > div,
+.customer-excel-table .customer-table-contact-actions {
+  gap: 0.25rem;
+}
+.customer-excel-table .customer-table-contact-actions > *,
+.customer-excel-table .customer-table-action-visit,
+.customer-excel-table .customer-table-action-history,
+.customer-excel-table .customer-table-action-edit,
+.customer-excel-table .customer-table-action-delete {
+  min-height: 1.9rem;
+  height: 1.9rem;
+  padding-inline: 0.4rem;
+  border-radius: 0.45rem;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+@media (max-width: 767px) {
+  .customer-excel-table col:nth-child(1) { width: 39% !important; }
+  .customer-excel-table col:nth-child(2) { width: 24% !important; }
+  .customer-excel-table col:nth-child(3) { width: 37% !important; }
+  .customer-excel-table col:nth-child(4),
+  .customer-excel-table col:nth-child(5),
+  .customer-excel-table col:nth-child(6),
+  .customer-excel-table col:nth-child(7),
+  .customer-excel-table col:nth-child(8),
+  .customer-excel-table col:nth-child(9) {
+    display: none;
+  }
+  .customer-excel-table th,
+  .customer-excel-table td {
+    padding: 0.16rem 0.22rem;
+    font-size: 0.68rem;
+    line-height: 1.15;
+  }
+  .customer-excel-table .customer-excel-row,
+  .customer-excel-table .customer-excel-row > td {
+    height: 2rem;
+  }
+  .customer-excel-table .customer-table-followup .follow-up-duration,
+  .customer-excel-table .customer-table-followup .follow-up-remaining,
+  .customer-excel-table .customer-table-followup .follow-up-badge {
+    display: none;
+  }
 }
 
 /* تفضيل حجم الخط العام: يعتمد على rem كي تتدرج العناوين والحقول معًا */
