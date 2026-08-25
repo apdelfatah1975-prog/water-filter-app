@@ -885,7 +885,8 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         return { id: customerId, alreadySynced: false, firstVisitCreated: false };
       }
       const visitDate = firstVisitDate ?? new Date();
-      const nextVisitDate = needsAutomaticReminder(firstVisitType) ? followUpDate(visitDate, followUpDays) : null;
+      const shouldCreateFollowUp = needsAutomaticReminder(firstVisitType) || followUpDays !== undefined;
+      const nextVisitDate = shouldCreateFollowUp ? followUpDate(visitDate, followUpDays) : null;
       const visitResult = await db.insert(visits).values({ customerId, ownerId, visitType: firstVisitType, visitDate, nextVisitDate, technicianName: storedTechnicianName, assignedTechnicianId: assignedTechnician?.id ?? null, salesAgentName: firstSalesAgentName ?? null, filterCount: firstFilterCount, tdsIn: firstTdsIn ?? null, tdsOut: firstTdsOut ?? null, visitResult: firstVisitResult ?? null, notes: firstVisitNotes ?? null });
       const visitId = Number(visitResult[0].insertId);
       const inventoryRows = items.length ? await db.select().from(inventoryItems).where(and(eq(inventoryItems.ownerId, ownerId), inArray(inventoryItems.id, items.map(item => item.inventoryItemId)))) : [];
@@ -1196,7 +1197,8 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
       }
       const customer = await getOwnedCustomer(ownerId, input.customerId);
       const { clientOperationId, collectedAmount, collectedCurrency, items, phone: _phone, followUpDays: requestedFollowUpDays, technicianName: inputTechnicianName, assignedTechnicianId: requestedTechnicianId, ...visitData } = input;
-      const reminderDate = needsAutomaticReminder(input.visitType)
+      const shouldCreateFollowUp = needsAutomaticReminder(input.visitType) || requestedFollowUpDays !== undefined || input.nextVisitDate != null;
+      const reminderDate = shouldCreateFollowUp
         ? input.nextVisitDate ?? followUpDate(input.visitDate, requestedFollowUpDays)
         : null;
       const assignedTechnician = await resolveAssignedTechnician(ownerId, ctx.user.role === "user" ? ctx.user.id : null, requestedTechnicianId, inputTechnicianName);
@@ -1226,7 +1228,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
           eq(reminders.customerId, input.customerId),
           eq(reminders.status, "pending"),
         ));
-      if (needsAutomaticReminder(input.visitType)) {
+      if (shouldCreateFollowUp) {
         await db.insert(reminders).values({
           customerId: input.customerId,
           visitId,
@@ -1242,7 +1244,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         }
       }
       await refreshOwnerBackup(ownerId);
-      return { id: visitId, reminderCreated: needsAutomaticReminder(input.visitType), alreadySynced: false };
+      return { id: visitId, reminderCreated: shouldCreateFollowUp, alreadySynced: false };
     }),
     updateDetails: adminProcedure.input(z.object({
       id: z.number().int().positive(),

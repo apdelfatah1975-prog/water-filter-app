@@ -44,10 +44,13 @@ export function daysUntilFollowUp(followUp: Date, now = new Date()) {
 export function followUpSummaryFromVisits<T extends FollowUpSourceVisit>(visits: T[], now = new Date()) {
   const lastServiceVisit = visits
     .filter(visit => {
-      if (!needsAutomaticReminder(visit.visitType) || visit.status === "cancelled") return false;
+      if (visit.status === "cancelled") return false;
+      // الموعد المحفوظ صراحةً هو المصدر الحاسم، حتى لو كانت المدة قصيرة
+      // أو كان نوع الزيارة غير مشمول بالافتراضي التلقائي.
+      if (visit.nextVisitDate) return true;
       // الزيارة المسجلة من شاشة العملاء تحفظ nextVisitDate حتى قبل إكمالها.
       // أما أمر العمل القديم بحالة assigned ومن دون موعد محفوظ فلا يُعد خدمة منفذة.
-      return Boolean(visit.nextVisitDate) || !visit.status || visit.status === "completed";
+      return needsAutomaticReminder(visit.visitType) && (!visit.status || visit.status === "completed");
     })
     .sort((first, second) => second.visitDate.getTime() - first.visitDate.getTime())[0];
 

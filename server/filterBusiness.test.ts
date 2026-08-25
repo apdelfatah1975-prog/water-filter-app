@@ -58,6 +58,16 @@ describe("منطق تطبيق فلاتر المياه", () => {
     expect(summary?.daysRemaining).toBe(0);
   });
 
+  it("يحافظ على موعد المتابعة القصير المحفوظ في البطاقة حتى للزيارة المسندة", () => {
+    const visitDate = new Date("2026-08-20T09:00:00.000Z");
+    const nextVisitDate = new Date("2026-08-25T09:00:00.000Z");
+    const summary = followUpSummaryFromVisits([
+      { visitType: "other" as const, visitDate, status: "assigned", nextVisitDate },
+    ], new Date("2026-08-21T09:00:00.000Z"));
+
+    expect(summary).toMatchObject({ nextVisitDate, followUpDays: 5, daysRemaining: 4 });
+  });
+
   it("يعرض التسلسل من ١ حتى ١٠٠٠ بالأرقام العربية الهندية دون بادئة", () => {
     expect([1, 2, 3, 1000].map(customerCode)).toEqual(["١", "٢", "٣", "١٠٠٠"]);
   });
