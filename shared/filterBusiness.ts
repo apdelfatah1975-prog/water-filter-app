@@ -29,7 +29,13 @@ export function customerCode(customerId: number) {
   return String(customerId).replace(/\d/g, digit => "٠١٢٣٤٥٦٧٨٩"[Number(digit)]);
 }
 
-export type FollowUpSourceVisit = { visitDate: Date; visitType: VisitType; status?: string | null };
+export type FollowUpSourceVisit = {
+  visitDate: Date;
+  visitType: VisitType;
+  status?: string | null;
+  /** الموعد الذي اختاره المستخدم أو حسبه النظام عند تسجيل الخدمة. */
+  nextVisitDate?: Date | null;
+};
 
 export function daysUntilFollowUp(followUp: Date, now = new Date()) {
   return Math.ceil((followUp.getTime() - now.getTime()) / 86_400_000);
@@ -37,12 +43,17 @@ export function daysUntilFollowUp(followUp: Date, now = new Date()) {
 
 export function followUpSummaryFromVisits<T extends FollowUpSourceVisit>(visits: T[], now = new Date()) {
   const lastServiceVisit = visits
-    .filter(visit => needsAutomaticReminder(visit.visitType) && (!visit.status || visit.status === "completed"))
+    .filter(visit => {
+      if (!needsAutomaticReminder(visit.visitType) || visit.status === "cancelled") return false;
+      // الزيارة المسجلة من شاشة العملاء تحفظ nextVisitDate حتى قبل إكمالها.
+      // أما أمر العمل القديم بحالة assigned ومن دون موعد محفوظ فلا يُعد خدمة منفذة.
+      return Boolean(visit.nextVisitDate) || !visit.status || visit.status === "completed";
+    })
     .sort((first, second) => second.visitDate.getTime() - first.visitDate.getTime())[0];
 
   if (!lastServiceVisit) return null;
 
-  const nextVisitDate = followUpDate(lastServiceVisit.visitDate);
+  const nextVisitDate = lastServiceVisit.nextVisitDate ?? followUpDate(lastServiceVisit.visitDate);
   return {
     lastServiceVisitDate: lastServiceVisit.visitDate,
     lastServiceVisitType: lastServiceVisit.visitType,

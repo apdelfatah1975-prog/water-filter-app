@@ -1194,6 +1194,9 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
       }
       const customer = await getOwnedCustomer(ownerId, input.customerId);
       const { clientOperationId, collectedAmount, collectedCurrency, items, phone: _phone, followUpDays: requestedFollowUpDays, technicianName: inputTechnicianName, assignedTechnicianId: requestedTechnicianId, ...visitData } = input;
+      const reminderDate = needsAutomaticReminder(input.visitType)
+        ? input.nextVisitDate ?? followUpDate(input.visitDate, requestedFollowUpDays)
+        : null;
       const assignedTechnician = await resolveAssignedTechnician(ownerId, ctx.user.role === "user" ? ctx.user.id : null, requestedTechnicianId, inputTechnicianName);
       const storedTechnicianName = assignedTechnician?.name ?? inputTechnicianName ?? null;
       const inventoryRows = items.length ? await db.select().from(inventoryItems).where(and(eq(inventoryItems.ownerId, ownerId), inArray(inventoryItems.id, items.map(item => item.inventoryItemId)))) : [];
@@ -1205,7 +1208,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         const balance = calculateStockBalance(inventoryItem.openingQuantity, movements);
         if (requested.quantity > balance) throw new TRPCError({ code: "BAD_REQUEST", message: `الرصيد غير كافٍ من صنف ${inventoryItem.name}؛ المتاح ${balance} والمطلوب ${requested.quantity}.` });
       }
-      const visitResult = await db.insert(visits).values({ ...visitData, ownerId, technicianName: storedTechnicianName, assignedTechnicianId: assignedTechnician?.id ?? null, clientOperationId });
+      const visitResult = await db.insert(visits).values({ ...visitData, nextVisitDate: reminderDate, ownerId, technicianName: storedTechnicianName, assignedTechnicianId: assignedTechnician?.id ?? null, clientOperationId });
       const visitId = Number(visitResult[0].insertId);
       for (const requested of items) {
         const inventoryItem = inventoryById.get(requested.inventoryItemId)!;
@@ -1226,7 +1229,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
           customerId: input.customerId,
           visitId,
           ownerId,
-          reminderDate: input.nextVisitDate ?? followUpDate(input.visitDate, requestedFollowUpDays),
+          reminderDate: reminderDate!,
         });
       }
       if (collectedAmount && collectedAmount > 0) {

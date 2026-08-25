@@ -162,6 +162,74 @@ describe("واجهات إدارة فلاتر المياه", () => {
     ]);
   });
 
+  it("يحفظ مدة المتابعة المرنة على الزيارة والتذكير كي تظهر البطاقة فوراً", async () => {
+    const insertCalls: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [{ id: 7, ownerId: 1, name: "عميل اختبار" }] }),
+        }),
+      }),
+      insert: (table: unknown) => ({
+        values: async (values: Record<string, unknown>) => {
+          insertCalls.push({ table, values });
+          return [{ insertId: table === visits ? 56 : 0 }];
+        },
+      }),
+      update: () => ({ set: () => ({ where: async () => undefined }) }),
+    };
+    vi.mocked(getDb).mockResolvedValue(db as never);
+    const visitDate = new Date("2026-01-01T09:00:00.000Z");
+
+    await appRouter.createCaller(createContext()).filters.visits.create({
+      customerId: 7,
+      visitType: "maintenance",
+      visitDate,
+      followUpDays: 60,
+    });
+
+    const visitInsert = insertCalls.find(call => call.table === visits)?.values;
+    const reminderInsert = insertCalls.find(call => call.table === reminders)?.values;
+    expect(visitInsert?.nextVisitDate).toEqual(new Date("2026-03-02T09:00:00.000Z"));
+    expect(reminderInsert?.reminderDate).toEqual(new Date("2026-03-02T09:00:00.000Z"));
+  });
+
+  it("يعيد ملف العميل بموعد محفوظ حتى إذا كانت الزيارة الجديدة بحالة assigned", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-01T09:00:00.000Z"));
+    const nextVisitDate = new Date("2026-05-01T09:00:00.000Z");
+    const assignedVisit = {
+      id: 56,
+      ownerId: 1,
+      customerId: 7,
+      visitType: "maintenance" as const,
+      visitDate: new Date("2026-01-01T09:00:00.000Z"),
+      nextVisitDate,
+      status: "assigned" as const,
+    };
+    const db = {
+      select: () => ({
+        from: (table: unknown) => ({
+          where: () => {
+            if (table === customers) return { limit: async () => [{ id: 7, ownerId: 1, name: "عميل اختبار" }] };
+            if (table === visits) return { orderBy: async () => [assignedVisit] };
+            if (table === reminders) return { orderBy: async () => [] };
+            return [];
+          },
+        }),
+      }),
+    };
+    vi.mocked(getDb).mockResolvedValue(db as never);
+
+    try {
+      await expect(appRouter.createCaller(createContext()).filters.customers.get({ id: 7 })).resolves.toMatchObject({
+        customer: { followUp: { nextVisitDate, daysRemaining: 89 } },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("يعيد ملف العميل بملخص متابعة موحد بعد تسجيل زيارة تركيب", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-01T09:00:00.000Z"));
