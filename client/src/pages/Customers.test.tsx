@@ -137,7 +137,7 @@ describe("ترابط تعديل بيانات العميل", () => {
     expect(tableView.className).toContain("block");
     expect(cardsView.className).toContain("hidden");
     expect(screen.getByTestId("customer-view-table-button").getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("columnheader", { name: "العميل" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "اسم العميل" })).toBeTruthy();
     fireEvent.click(screen.getByTestId("customer-view-cards-button"));
     expect(cardsView.className).toContain("block");
     expect(tableView.className).toContain("hidden");
