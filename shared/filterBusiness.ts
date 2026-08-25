@@ -54,10 +54,12 @@ export function followUpSummaryFromVisits<T extends FollowUpSourceVisit>(visits:
   if (!lastServiceVisit) return null;
 
   const nextVisitDate = lastServiceVisit.nextVisitDate ?? followUpDate(lastServiceVisit.visitDate);
+  const followUpDays = Math.max(0, Math.round((nextVisitDate.getTime() - lastServiceVisit.visitDate.getTime()) / 86_400_000));
   return {
     lastServiceVisitDate: lastServiceVisit.visitDate,
     lastServiceVisitType: lastServiceVisit.visitType,
     nextVisitDate,
+    followUpDays,
     daysRemaining: daysUntilFollowUp(nextVisitDate, now),
   };
 }

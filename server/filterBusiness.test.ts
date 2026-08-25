@@ -12,6 +12,11 @@ describe("منطق تطبيق فلاتر المياه", () => {
     expect(followUpDate(visitDate, 60).toISOString()).toBe("2026-03-02T00:00:00.000Z");
   });
 
+  it("يستخدم 120 يوماً تلقائياً عند ترك مدة المتابعة غير محددة", () => {
+    const visitDate = new Date("2026-01-01T00:00:00.000Z");
+    expect(followUpDate(visitDate, undefined).toISOString()).toBe("2026-05-01T00:00:00.000Z");
+  });
+
   it("يُنشئ تذكيرًا للتركيب والصيانة فقط", () => {
     expect(needsAutomaticReminder("installation")).toBe(true);
     expect(needsAutomaticReminder("maintenance")).toBe(true);
@@ -31,8 +36,16 @@ describe("منطق تطبيق فلاتر المياه", () => {
       lastServiceVisitType: "maintenance",
       lastServiceVisitDate: new Date("2026-03-01T09:00:00.000Z"),
       nextVisitDate: new Date("2026-06-29T09:00:00.000Z"),
+      followUpDays: 120,
       daysRemaining: 10,
     });
+  });
+
+  it("يحسب عدد الأيام المخصص من تاريخ الزيارة إلى الموعد المحفوظ", () => {
+    const summary = followUpSummaryFromVisits([
+      { visitType: "maintenance" as const, visitDate: new Date("2026-01-01T09:00:00.000Z"), status: "assigned", nextVisitDate: new Date("2026-03-02T09:00:00.000Z") },
+    ]);
+    expect(summary).toMatchObject({ followUpDays: 60, nextVisitDate: new Date("2026-03-02T09:00:00.000Z") });
   });
 
   it("يتجاهل الزيارة غير المكتملة عند إكمال تاريخ المتابعة تلقائيًا", () => {

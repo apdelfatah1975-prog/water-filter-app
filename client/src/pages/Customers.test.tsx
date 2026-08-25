@@ -112,6 +112,20 @@ describe("ترابط تعديل بيانات العميل", () => {
     expect(screen.getByLabelText("فلترة حالة العميل: متأخر")).toBeTruthy();
   });
 
+  it("يعرض عدد أيام المتابعة الافتراضي والمخصص داخل بطاقة العميل", () => {
+    mocks.list.mockReturnValue({
+      data: [
+        { id: 12, name: "عميل افتراضي", phone: "01000000000", address: "العنوان", latitude: null, longitude: null, notes: null, customerCode: "C-000012", followUp: { nextVisitDate: new Date("2026-12-01T09:00:00Z"), daysRemaining: 10 } },
+        { id: 13, name: "عميل مخصص", phone: "01000000001", address: "العنوان", latitude: null, longitude: null, notes: null, customerCode: "C-000013", followUp: { nextVisitDate: new Date("2026-10-01T09:00:00Z"), followUpDays: 60, daysRemaining: 10 } },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+    render(<Customers />);
+    expect(screen.getByText("بعد 120 يومًا")).toBeTruthy();
+    expect(screen.getByText("بعد 60 يومًا")).toBeTruthy();
+  });
+
   it("يبدل بين البطاقات الملونة والجدول ويحافظ على العرض النشط", () => {
     render(<Customers />);
     const cardsView = screen.getByTestId("customer-view-cards");
