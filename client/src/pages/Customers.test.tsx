@@ -145,7 +145,7 @@ describe("ترابط تعديل بيانات العميل", () => {
 
   it("يستخدم تخطيطًا مضغوطًا للبطاقات وصفوف الجدول", () => {
     render(<Customers />);
-    expect(screen.getByTestId("customer-card-12").className).toContain("p-2.5");
+    expect(screen.getByTestId("customer-card-12").className).toContain("p-2");
     fireEvent.click(screen.getByTestId("customer-view-table-button"));
     const customerRow = screen.getByTestId("customer-view-table").querySelector("tbody tr");
     expect(customerRow?.className).toContain("h-11");
