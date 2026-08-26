@@ -163,6 +163,42 @@ describe("بطاقة رصيد الخزينة في لوحة التحكم", () => 
     expect(mocks.toastWarning).toHaveBeenCalledWith(expect.stringContaining("فلتر جامبو"), expect.objectContaining({ description: expect.stringContaining("الحد الأدنى") }));
   });
 
+  it("تعرض شارة حمراء بعدد الأصناف منخفضة الرصيد وتفتح المخزن عند الضغط على البطاقة", () => {
+    mocks.dashboard.mockReturnValue({
+      isLoading: false,
+      data: {
+        todayVisits: [], upcomingVisits: [], upcomingFollowUps: [], dueReminders: [],
+        cash: { incomeTotal: 0, expenseTotal: 0, balance: 0, summaries: [] },
+        inventory: {
+          totalItems: 2,
+          lowStockCount: 2,
+          lowStock: [{ id: 27, name: "فلتر جامبو", currentBalance: 1, reorderLevel: 2 }, { id: 28, name: "شمعة", currentBalance: 0, reorderLevel: 2 }],
+          items: [{ id: 27, name: "فلتر جامبو", currentBalance: 1, reorderLevel: 2 }, { id: 28, name: "شمعة", currentBalance: 0, reorderLevel: 2 }],
+        },
+      },
+    });
+    render(<Home />);
+    const badge = screen.getByTestId("dashboard-low-stock-badge");
+    expect(badge.textContent).toContain("منخفض");
+    expect(badge.textContent).toContain("2");
+    expect(badge.getAttribute("aria-label")).toContain("أصناف منخفضة الرصيد");
+    fireEvent.click(screen.getByRole("button", { name: "فتح تفاصيل أصناف بالمخزن" }));
+    expect(mocks.setLocation).toHaveBeenCalledWith("/inventory");
+  });
+
+  it("لا تعرض شارة الرصيد المنخفض عندما تكون كل الأرصدة فوق الحد الأدنى", () => {
+    mocks.dashboard.mockReturnValue({
+      isLoading: false,
+      data: {
+        todayVisits: [], upcomingVisits: [], upcomingFollowUps: [], dueReminders: [],
+        cash: { incomeTotal: 0, expenseTotal: 0, balance: 0, summaries: [] },
+        inventory: { totalItems: 1, lowStockCount: 0, lowStock: [], items: [{ id: 27, name: "فلتر جامبو", currentBalance: 4, reorderLevel: 2 }] },
+      },
+    });
+    render(<Home />);
+    expect(screen.queryByTestId("dashboard-low-stock-badge")).toBeNull();
+  });
+
   it("تنتقل بطاقة صنف المخزن إلى تفاصيل الصنف المحدد", () => {
     mocks.dashboard.mockReturnValue({
       isLoading: false,
