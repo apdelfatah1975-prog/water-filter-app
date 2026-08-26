@@ -128,8 +128,13 @@ export default function TechnicianPreview() {
     onError: error => toast.error(error.message || "تعذر إرسال صورة الزيارة"),
   });
   const update = trpc.filters.workOrders.updateStatus.useMutation({
-    onSuccess: () => {
+    onSuccess: result => {
       toast.success("تم حفظ تحديث أمر العمل");
+      const lowStockItems = Array.isArray(result?.lowStockItems) ? result.lowStockItems : [];
+      if (lowStockItems.length > 0) {
+        const summary = lowStockItems.map(item => `${item.name}: ${item.currentBalance} ${item.unit} (الحد الأدنى ${item.reorderLevel})`).join("، ");
+        toast.warning(`تنبيه فوري: رصيد منخفض — ${summary}`, { description: "راجع المخزن واطلب توريد الصنف قبل تنفيذ زيارة أخرى." });
+      }
       query.refetch();
       utils.filters.visits.list.invalidate();
       utils.filters.dashboard.invalidate();

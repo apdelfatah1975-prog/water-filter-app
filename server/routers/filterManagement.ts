@@ -1766,6 +1766,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
           await db.update(reminders).set({ status: "completed" }).where(and(eq(reminders.id, visitPendingReminder[0].id), eq(reminders.ownerId, ownerId)));
         }
       }
+      const lowStockItems: Array<{ id: number; name: string; unit: string; currentBalance: number; reorderLevel: number }> = [];
       if (input.status === "completed" && visit.status !== "completed") {
         const inventoryRows = input.items.length ? await db.select().from(inventoryItems).where(and(eq(inventoryItems.ownerId, ownerId), inArray(inventoryItems.id, input.items.map(item => item.inventoryItemId)))) : [];
         const inventoryById = new Map(inventoryRows.map(item => [item.id, item]));
@@ -1774,9 +1775,15 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
           if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "أحد الأصناف غير موجود." });
           const movements = await db.select().from(inventoryMovements).where(and(eq(inventoryMovements.ownerId, ownerId), eq(inventoryMovements.inventoryItemId, item.id)));
           const balance = calculateStockBalance(item.openingQuantity, movements);
-          if (requested.quantity > balance) throw new TRPCError({ code: "BAD_REQUEST", message: `الرصيد غير كافٍ من صنف ${item.name}؛ المتاح ${balance}.` });
+          if (requested.quantity > balance) throw new TRPCError({ code: "BAD_REQUEST", message: `الرصيد غير كافٍ من صنف ${item.name}؛ المتاح ${balance} والمطلوب ${requested.quantity}.` });
           await db.insert(visitItems).values({ ownerId, visitId: visit.id, inventoryItemId: item.id, itemNameSnapshot: item.name, unitSnapshot: item.unit, quantity: requested.quantity, source: requested.source });
           await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: item.id, movementType: "outgoing", quantity: requested.quantity, unitCost: item.defaultUnitCost, currency: "SAR", movementDate: now, technicianName: visit.technicianName, notes: `منصرف لأمر عمل العميل ${visit.customerId}` });
+        }
+        for (const item of Array.from(inventoryById.values())) {
+          const movements = await db.select().from(inventoryMovements).where(and(eq(inventoryMovements.ownerId, ownerId), eq(inventoryMovements.inventoryItemId, item.id)));
+          const currentBalance = calculateStockBalance(item.openingQuantity, movements);
+          const reorderLevel = item.reorderLevel ?? 2;
+          if (currentBalance <= reorderLevel) lowStockItems.push({ id: item.id, name: item.name, unit: item.unit, currentBalance, reorderLevel });
         }
         if (input.collectedAmount > 0) {
           const category = visit.visitType === "installation" ? "تحصيل تركيب" : visit.visitType === "maintenance" ? "تحصيل صيانة" : visit.visitType === "cartridge_change" ? "تحصيل تغيير شمعات" : "تحصيل زيارة";
@@ -1784,7 +1791,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         }
       }
       await refreshOwnerBackup(ownerId);
-      return { success: true };
+      return { success: true, lowStockItems };
     }),
   }),
 

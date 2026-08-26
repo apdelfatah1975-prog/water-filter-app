@@ -950,7 +950,7 @@ describe("صلاحيات الفني والإدارة", () => {
     vi.mocked(getDb).mockResolvedValue(db as never);
 
     try {
-      await expect(appRouter.createCaller(createTechnicianContext()).filters.workOrders.updateStatus({ id: 220, status: "completed", followUpDays: 45 })).resolves.toEqual({ success: true });
+      await expect(appRouter.createCaller(createTechnicianContext()).filters.workOrders.updateStatus({ id: 220, status: "completed", followUpDays: 45 })).resolves.toEqual({ success: true, lowStockItems: [] });
       const visitUpdate = updates.find(entry => entry.table === visits);
       const reminderInsert = inserts.find(entry => entry.table === reminders);
       expect(visitUpdate?.values.nextVisitDate).toEqual(new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000));
@@ -958,6 +958,41 @@ describe("صلاحيات الفني والإدارة", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("يعيد تنبيه الرصيد المنخفض بعد خصم صنف من أمر العمل", async () => {
+    const updates: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const visit = { id: 222, ownerId: 1, customerId: 9, assignedTechnicianId: 9, status: "in_progress", visitType: "maintenance", nextVisitDate: null, visitResult: null, notes: null, executionOutcome: null, notCompletedReason: null, arrivedAt: null, completedAt: null, tdsIn: null, tdsOut: null, technicianName: "الفني التجريبي" };
+    const item = { id: 14, ownerId: 1, name: "شمعة 10 بوصة", unit: "قطعة", openingQuantity: 0, reorderLevel: 2, defaultUnitCost: 10 };
+    const movements: Array<Record<string, unknown>> = [{ id: 1, ownerId: 1, inventoryItemId: 14, movementType: "incoming", quantity: 3 }];
+    const db = {
+      select: () => ({
+        from: (table: unknown) => ({
+          where: () => {
+            const rows = table === visits ? [visit] : table === reminders ? [] : table === inventoryItems ? [item] : table === inventoryMovements ? movements : [];
+            const result = Promise.resolve(rows) as Promise<unknown[]> & { limit?: () => Promise<unknown[]> };
+            result.limit = async () => rows;
+            return result;
+          },
+        }),
+      }),
+      update: (table: unknown) => ({
+        set: (values: Record<string, unknown>) => ({ where: async () => { updates.push({ table, values }); } }),
+      }),
+      insert: (table: unknown) => ({
+        values: async (values: Record<string, unknown>) => {
+          inserts.push({ table, values });
+          if (table === inventoryMovements) movements.push({ ...values, id: movements.length + 1 });
+          return [{ insertId: 0 }];
+        },
+      }),
+    };
+    vi.mocked(getDb).mockResolvedValue(db as never);
+
+    const result = await appRouter.createCaller(createTechnicianContext()).filters.workOrders.updateStatus({ id: 222, status: "completed", items: [{ inventoryItemId: 14, quantity: 2, source: "manual" }] });
+    expect(result).toEqual({ success: true, lowStockItems: [{ id: 14, name: "شمعة 10 بوصة", unit: "قطعة", currentBalance: 1, reorderLevel: 2 }] });
+    expect(inserts.some(entry => entry.table === inventoryMovements)).toBe(true);
   });
 
   it("يحدّث التذكير القائم عند إغلاق أمر العمل مع تاريخ محدد من الفني", async () => {
@@ -984,7 +1019,7 @@ describe("صلاحيات الفني والإدارة", () => {
     vi.mocked(getDb).mockResolvedValue(db as never);
     const nextVisitDate = new Date("2026-11-20T09:00:00.000Z");
 
-    await expect(appRouter.createCaller(createTechnicianContext()).filters.workOrders.updateStatus({ id: 221, status: "completed", nextVisitDate })).resolves.toEqual({ success: true });
+    await expect(appRouter.createCaller(createTechnicianContext()).filters.workOrders.updateStatus({ id: 221, status: "completed", nextVisitDate })).resolves.toEqual({ success: true, lowStockItems: [] });
     expect(updates.find(entry => entry.table === visits)?.values.nextVisitDate).toEqual(nextVisitDate);
     expect(updates.filter(entry => entry.table === reminders).some(entry => entry.values.reminderDate?.getTime?.() === nextVisitDate.getTime())).toBe(true);
     expect(inserts.filter(entry => entry.table === reminders)).toHaveLength(0);

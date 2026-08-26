@@ -6,6 +6,8 @@ import TechnicianPreview from "./TechnicianPreview";
 const setLocation = vi.fn();
 const mutate = vi.fn();
 const refetch = vi.fn();
+const { toastWarning } = vi.hoisted(() => ({ toastWarning: vi.fn() }));
+let updateOptions: { onSuccess?: (result: { lowStockItems?: Array<{ name: string; unit: string; currentBalance: number; reorderLevel: number }> }) => void } | null = null;
 const inventoryItems = [{ id: 14, name: "شمعة 10 بوصة", unit: "قطعة", currentBalance: 5 }];
 
 const orders = [
@@ -21,14 +23,14 @@ const orders = [
 
 vi.mock("wouter", () => ({ useLocation: () => ["/technician-preview", setLocation] }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: 3, name: "الفني التجريبي", role: "user" } }) }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: toastWarning } }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({ filters: { visits: { list: { invalidate: vi.fn() } }, dashboard: { invalidate: vi.fn() } } }),
     filters: {
       workOrders: {
         list: { useQuery: () => ({ data: orders, refetch }) },
-        updateStatus: { useMutation: () => ({ mutate, isPending: false }) },
+        updateStatus: { useMutation: (options?: { onSuccess?: (result: { lowStockItems?: Array<{ name: string; unit: string; currentBalance: number; reorderLevel: number }> }) => void }) => { updateOptions = options ?? null; return { mutate, isPending: false }; } },
         addProof: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       },
       inventory: { technicianSummary: { useQuery: () => ({ data: { items: inventoryItems } }) } },
@@ -44,6 +46,8 @@ describe("واجهة الفني وأوامر العمل", () => {
     setLocation.mockReset();
     mutate.mockReset();
     refetch.mockReset();
+    updateOptions = null;
+    toastWarning.mockReset();
   });
 
   it("تعرض بيانات العميل المسموحة وتحجب أسرار الشركة", () => {
@@ -132,6 +136,16 @@ describe("واجهة الفني وأوامر العمل", () => {
       status: "completed",
       items: [{ inventoryItemId: 14, quantity: 1, source: "manual" }],
     }));
+  });
+
+  it("تحذر الفني فورًا عند انخفاض رصيد صنف بعد إغلاق الأمر", () => {
+    orders[0].status = "in_progress";
+    render(<TechnicianPreview />);
+    fireEvent.click(screen.getByRole("button", { name: "تحديث" }));
+    fireEvent.click(screen.getByRole("button", { name: /حفظ وإغلاق أمر العمل/ }));
+    updateOptions?.onSuccess?.({ lowStockItems: [{ name: "شمعة 10 بوصة", unit: "قطعة", currentBalance: 1, reorderLevel: 2 }] });
+    expect(updateOptions?.onSuccess).toBeTruthy();
+    expect(toastWarning).toHaveBeenCalledWith(expect.stringContaining("شمعة 10 بوصة"), expect.objectContaining({ description: expect.stringContaining("راجع المخزن") }));
   });
 
   it("ترسل نتيجة العمل والمبلغ عند إغلاق الأمر", () => {
