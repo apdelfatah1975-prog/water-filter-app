@@ -225,6 +225,7 @@ export const inventoryMovements = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     inventoryItemId: int("inventoryItemId").notNull().references(() => inventoryItems.id, { onDelete: "cascade" }),
     ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    customerId: int("customerId").references(() => customers.id, { onDelete: "set null" }),
     movementType: mysqlEnum("movementType", ["incoming", "outgoing"]).notNull(),
     quantity: int("quantity").notNull(),
     unitCost: int("unitCost").default(0).notNull(),
@@ -237,6 +238,7 @@ export const inventoryMovements = mysqlTable(
   },
   table => [
     index("inventory_movements_item_idx").on(table.inventoryItemId),
+    index("inventory_movements_customer_idx").on(table.ownerId, table.customerId),
     uniqueIndex("inventory_movements_owner_operation_unique").on(table.ownerId, table.clientOperationId),
     index("inventory_movements_owner_date_idx").on(table.ownerId, table.movementDate),
     index("inventory_movements_purchase_idx").on(table.ownerId, table.movementType, table.movementDate),

@@ -160,6 +160,7 @@
 
 /* شبكة Excel لجدول العملاء: حدود الخلايا متجاورة وواضحة دون فراغات بينية */
 .customer-excel-table {
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   table-layout: fixed;
@@ -168,6 +169,7 @@
 }
 .customer-excel-table th,
 .customer-excel-table td {
+  box-sizing: border-box;
   border: 1px solid rgb(153 190 185 / 0.78);
   vertical-align: middle;
   overflow-wrap: anywhere;
@@ -203,9 +205,9 @@
 }
 
 @media (max-width: 767px) {
-  .customer-excel-table col:nth-child(1) { width: 39% !important; }
+  .customer-excel-table col:nth-child(1) { width: 38% !important; }
   .customer-excel-table col:nth-child(2) { width: 24% !important; }
-  .customer-excel-table col:nth-child(3) { width: 37% !important; }
+  .customer-excel-table col:nth-child(3) { width: 38% !important; }
   .customer-excel-table col:nth-child(4),
   .customer-excel-table col:nth-child(5),
   .customer-excel-table col:nth-child(6),

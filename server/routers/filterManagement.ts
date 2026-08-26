@@ -359,6 +359,11 @@ async function inventorySummary(ownerId: number) {
     .from(inventoryMovements)
     .where(and(eq(inventoryMovements.ownerId, ownerId), inArray(inventoryMovements.inventoryItemId, itemIds)))
     .orderBy(desc(inventoryMovements.movementDate));
+  const customerIds = Array.from(new Set(movements.map(movement => movement.customerId).filter((id): id is number => Boolean(id))));
+  const customerRows = customerIds.length
+    ? await db.select({ id: customers.id, name: customers.name }).from(customers).where(and(eq(customers.ownerId, ownerId), inArray(customers.id, customerIds)))
+    : [];
+  const customerNames = new Map(customerRows.map(customer => [customer.id, customer.name]));
   const itemBalances = items.map(item => {
     const itemMovements = movements.filter(movement => movement.inventoryItemId === item.id);
     const openingMovement = itemMovements
@@ -377,6 +382,7 @@ async function inventorySummary(ownerId: number) {
     movements: movements.map(movement => ({
       ...movement,
       inventoryItemName: items.find(item => item.id === movement.inventoryItemId)?.name ?? "صنف غير معروف",
+      customerName: movement.customerId ? customerNames.get(movement.customerId) ?? "عميل غير معروف" : null,
     })),
   };
 }
@@ -904,7 +910,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         const inventoryItem = inventoryById.get(requested.inventoryItemId)!;
         const operationId = clientOperationId ? `${clientOperationId}:${requested.inventoryItemId}`.slice(0, 64) : undefined;
         await db.insert(visitItems).values({ ownerId, visitId, inventoryItemId: inventoryItem.id, itemNameSnapshot: inventoryItem.name, unitSnapshot: inventoryItem.unit, quantity: requested.quantity, source: requested.source, clientOperationId: operationId });
-        await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: inventoryItem.id, movementType: "outgoing", quantity: requested.quantity, unitCost: inventoryItem.defaultUnitCost, currency: "SAR", movementDate: visitDate, technicianName: storedTechnicianName, notes: `منصرف تلقائي من أول زيارة للعميل ${input.name}`, clientOperationId: operationId });
+        await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: inventoryItem.id, movementType: "outgoing", quantity: requested.quantity, unitCost: inventoryItem.defaultUnitCost, currency: "SAR", movementDate: visitDate, technicianName: storedTechnicianName, customerId, notes: `منصرف تلقائي من أول زيارة للعميل ${input.name}`, clientOperationId: operationId });
       }
       if (nextVisitDate) {
         await db.insert(reminders).values({ customerId, visitId, ownerId, reminderDate: nextVisitDate });
@@ -1222,7 +1228,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
         const inventoryItem = inventoryById.get(requested.inventoryItemId)!;
         const operationId = clientOperationId ? `${clientOperationId}:${requested.inventoryItemId}`.slice(0, 64) : undefined;
         await db.insert(visitItems).values({ ownerId, visitId, inventoryItemId: inventoryItem.id, itemNameSnapshot: inventoryItem.name, unitSnapshot: inventoryItem.unit, quantity: requested.quantity, source: requested.source, clientOperationId: operationId });
-        await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: inventoryItem.id, movementType: "outgoing", quantity: requested.quantity, unitCost: inventoryItem.defaultUnitCost, currency: "SAR", movementDate: input.visitDate, technicianName: storedTechnicianName, notes: `منصرف تلقائي من زيارة العميل ${customer.name}`, clientOperationId: operationId });
+        await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: inventoryItem.id, customerId: input.customerId, movementType: "outgoing", quantity: requested.quantity, unitCost: inventoryItem.defaultUnitCost, currency: "SAR", movementDate: input.visitDate, technicianName: storedTechnicianName, notes: `منصرف تلقائي من زيارة العميل ${customer.name}`, clientOperationId: operationId });
       }
       // تسجيل الزيارة يعني أن متابعة العميل تمت؛ لا نُبقي أي تذكير سابق معلقًا.
       await db.update(reminders)
@@ -1777,7 +1783,7 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
           const balance = calculateStockBalance(item.openingQuantity, movements);
           if (requested.quantity > balance) throw new TRPCError({ code: "BAD_REQUEST", message: `الرصيد غير كافٍ من صنف ${item.name}؛ المتاح ${balance} والمطلوب ${requested.quantity}.` });
           await db.insert(visitItems).values({ ownerId, visitId: visit.id, inventoryItemId: item.id, itemNameSnapshot: item.name, unitSnapshot: item.unit, quantity: requested.quantity, source: requested.source });
-          await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: item.id, movementType: "outgoing", quantity: requested.quantity, unitCost: item.defaultUnitCost, currency: "SAR", movementDate: now, technicianName: visit.technicianName, notes: `منصرف لأمر عمل العميل ${visit.customerId}` });
+          await db.insert(inventoryMovements).values({ ownerId, inventoryItemId: item.id, customerId: visit.customerId, movementType: "outgoing", quantity: requested.quantity, unitCost: item.defaultUnitCost, currency: "SAR", movementDate: now, technicianName: visit.technicianName, notes: `منصرف لأمر عمل العميل ${visit.customerId}` });
         }
         for (const item of Array.from(inventoryById.values())) {
           const movements = await db.select().from(inventoryMovements).where(and(eq(inventoryMovements.ownerId, ownerId), eq(inventoryMovements.inventoryItemId, item.id)));

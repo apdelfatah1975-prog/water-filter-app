@@ -5,6 +5,9 @@ const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "u
 const router = readFileSync(new URL("./routers/filterManagement.ts", import.meta.url), "utf8");
 const technician = readFileSync(new URL("../client/src/pages/TechnicianPreview.tsx", import.meta.url), "utf8");
 const workOrders = readFileSync(new URL("../client/src/pages/WorkOrders.tsx", import.meta.url), "utf8");
+const customersPage = readFileSync(new URL("../client/src/pages/Customers.tsx", import.meta.url), "utf8");
+const inventoryPage = readFileSync(new URL("../client/src/pages/Inventory.tsx", import.meta.url), "utf8");
+const styles = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
 
 describe("field improvements contracts", () => {
   it("keeps visit TDS and before/after photo references in the schema", () => {
@@ -47,5 +50,20 @@ describe("field improvements contracts", () => {
     expect(router).toContain("const ownerId = await getCompanyOwnerId(ctx.user.id, ctx.user.role);");
     expect(router).toContain("assignedTechnicianId: assignedTechnician?.id ?? null");
     expect(router).toContain("clientOperationId: operationId");
+  });
+
+  it("attributes first-visit deductions and keeps the inventory log readable", () => {
+    expect(router).toContain('movementType: "outgoing"');
+    expect(router).toContain("customerId, notes: `منصرف تلقائي من أول زيارة للعميل ${input.name}`");
+    expect(inventoryPage).toContain("movement.technicianName || \"—\"");
+    expect(inventoryPage).toContain("movement.customerName || \"—\"");
+  });
+
+  it("prevents customer clipping and removes location actions from sent orders", () => {
+    expect(customersPage).toContain("min-w-0 w-full max-w-none");
+    expect(customersPage).toContain("overflow-x-clip");
+    expect(workOrders).toContain("compact labels hideLocationActions className=\"shrink-0\"");
+    expect(workOrders).toContain("compact labels hideLocationActions className=\"mt-3\"");
+    expect(styles).toContain("box-sizing: border-box;");
   });
 });
