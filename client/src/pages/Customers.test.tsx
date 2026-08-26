@@ -146,6 +146,14 @@ describe("ترابط تعديل بيانات العميل", () => {
     expect(tableView.className).toContain("hidden");
   });
 
+  it("يوسّع غلاف صفحة العملاء قليلًا دون فك ضغط البطاقات", () => {
+    render(<Customers />);
+    const shell = screen.getByTestId("customers-page-shell");
+    expect(shell.className).toContain("sm:-mx-1");
+    expect(shell.className).toContain("lg:px-2");
+    expect(screen.getByTestId("customer-card-12").className).toContain("p-1.5");
+  });
+
   it("يستخدم تخطيطًا مضغوطًا للبطاقات وصفوف الجدول", () => {
     render(<Customers />);
     expect(screen.getByTestId("customer-card-12").className).toContain("p-1.5");
