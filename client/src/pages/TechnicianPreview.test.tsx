@@ -6,6 +6,7 @@ import TechnicianPreview from "./TechnicianPreview";
 const setLocation = vi.fn();
 const mutate = vi.fn();
 const refetch = vi.fn();
+const inventoryItems = [{ id: 14, name: "شمعة 10 بوصة", unit: "قطعة", currentBalance: 5 }];
 
 const orders = [
   {
@@ -30,7 +31,7 @@ vi.mock("@/lib/trpc", () => ({
         updateStatus: { useMutation: () => ({ mutate, isPending: false }) },
         addProof: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       },
-      inventory: { technicianSummary: { useQuery: () => ({ data: { items: [] } }) } },
+      inventory: { technicianSummary: { useQuery: () => ({ data: { items: inventoryItems } }) } },
       notifications: { settings: { useQuery: () => ({ data: { companyWhatsAppPhone: "0500000000" } }) } },
     },
   },
@@ -53,6 +54,8 @@ describe("واجهة الفني وأوامر العمل", () => {
     expect(screen.queryByText("الخزينة العامة")).toBeNull();
     expect(screen.queryByText("تكلفة الشراء")).toBeNull();
     expect(screen.queryByText("تقارير الشركة")).toBeNull();
+    expect(screen.queryByText("طلب الموقع")).toBeNull();
+    expect(screen.queryByText("مشاركة الموقع")).toBeNull();
   });
 
   it("تنقل أمر العمل من مسند إلى في الطريق", () => {
@@ -114,6 +117,21 @@ describe("واجهة الفني وأوامر العمل", () => {
     getContext.mockRestore();
     toBlob.mockRestore();
     vi.unstubAllGlobals();
+  });
+
+  it("تعرض أصناف المخزن وتضمّن الصنف المستخدم في تحديث أمر العمل", () => {
+    orders[0].status = "in_progress";
+    render(<TechnicianPreview />);
+    fireEvent.click(screen.getByRole("button", { name: "تحديث" }));
+    expect(screen.getByTestId("used-items-section")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /شمعة 10 بوصة/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /شمعة 10 بوصة/ }));
+    fireEvent.click(screen.getByRole("button", { name: /حفظ وإغلاق أمر العمل/ }));
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
+      id: 7,
+      status: "completed",
+      items: [{ inventoryItemId: 14, quantity: 1, source: "manual" }],
+    }));
   });
 
   it("ترسل نتيجة العمل والمبلغ عند إغلاق الأمر", () => {

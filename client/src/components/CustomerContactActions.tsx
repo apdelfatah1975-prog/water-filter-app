@@ -33,6 +33,7 @@ export function CustomerContactActions({
   compact = false,
   labels = false,
   showLocationPlaceholder = false,
+  hideLocationActions = false,
   className = "",
 }: {
   customer: CustomerContact;
@@ -41,6 +42,7 @@ export function CustomerContactActions({
   compact?: boolean;
   labels?: boolean;
   showLocationPlaceholder?: boolean;
+  hideLocationActions?: boolean;
   className?: string;
 }) {
   const [whatsappOpen, setWhatsappOpen] = useState(false);
@@ -66,8 +68,8 @@ export function CustomerContactActions({
       {phone ? <a href={`tel:${phone}`} className={`${baseClass} bg-teal-50 text-teal-800`} title="اتصال بالعميل" aria-label="اتصال بالعميل">{content(<Phone className={iconClass} />, "اتصال")}</a> : <span className={`${baseClass} cursor-not-allowed bg-slate-100 text-slate-400`} title="رقم هاتف العميل غير مسجل" aria-label="رقم هاتف العميل غير مسجل">{content(<Phone className={iconClass} />, "بدون هاتف")}</span>}
       {phone ? <button type="button" onClick={() => setWhatsappOpen(true)} className={`${baseClass} bg-emerald-50 text-emerald-800`} title="اختيار رسالة واتساب للعميل" aria-label="إرسال رسالة واتساب للعميل">{content(<MessageCircle className={iconClass} />, "واتساب")}</button> : null}
       {mapUrl ? <a href={mapUrl} target="_blank" rel="noreferrer" className={`${baseClass} bg-indigo-50 text-indigo-800`} title="فتح موقع العميل على خرائط Google" aria-label="فتح موقع العميل على خرائط Google">{content(<MapPinned className={iconClass} aria-hidden="true" />, "الموقع")}</a> : showLocationPlaceholder ? <span className={`${baseClass} cursor-not-allowed bg-slate-100 text-slate-400`} title="لم يتم تسجيل موقع أو عنوان العميل" aria-label="موقع العميل غير مسجل">{content(<MapPinned className={iconClass} aria-hidden="true" />, "الموقع غير مسجل")}</span> : null}
-      {labels && locationShareUrl ? <a href={locationShareUrl} target="_blank" rel="noreferrer" className={`${baseClass} bg-cyan-50 text-cyan-800`} title="مشاركة موقع العميل عبر واتساب" aria-label={`مشاركة موقع ${customerName} عبر واتساب`}>{content(<MapPinned className={iconClass} aria-hidden="true" />, "مشاركة الموقع")}</a> : null}
-      {labels && locationRequestUrl ? <a href={locationRequestUrl} target="_blank" rel="noreferrer" className={`${baseClass} bg-sky-50 text-sky-800`} title="طلب موقع العميل عبر واتساب" aria-label="طلب موقع العميل عبر واتساب">{content(<MapPinned className={iconClass} aria-hidden="true" />, "طلب الموقع")}</a> : null}
+      {labels && !hideLocationActions && locationShareUrl ? <a href={locationShareUrl} target="_blank" rel="noreferrer" className={`${baseClass} bg-cyan-50 text-cyan-800`} title="مشاركة موقع العميل عبر واتساب" aria-label={`مشاركة موقع ${customerName} عبر واتساب`}>{content(<MapPinned className={iconClass} aria-hidden="true" />, "مشاركة الموقع")}</a> : null}
+      {labels && !hideLocationActions && locationRequestUrl ? <a href={locationRequestUrl} target="_blank" rel="noreferrer" className={`${baseClass} bg-sky-50 text-sky-800`} title="طلب موقع العميل عبر واتساب" aria-label="طلب موقع العميل عبر واتساب">{content(<MapPinned className={iconClass} aria-hidden="true" />, "طلب الموقع")}</a> : null}
     </div>
     {whatsappOpen ? <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center" role="presentation" onClick={() => setWhatsappOpen(false)}>
       <section role="dialog" aria-modal="true" aria-labelledby="whatsapp-stage-title" className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl" dir="rtl" onClick={event => event.stopPropagation()}>

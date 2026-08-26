@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { CustomerContactActions } from "@/components/CustomerContactActions";
+import { UsedItemsSection, type CatalogItem, type UsedVisitItem } from "@/pages/Customers";
 import { extractArray } from "@/lib/dataNormalization";
 import { normalizeEvidenceDataUrl } from "../../../shared/evidence";
 import { printWorkOrderReceipt } from "@/lib/pdfExport";
@@ -28,7 +29,7 @@ const serviceLabels: Record<string, string> = {
   other: "أخرى",
 };
 
-type SelectedItem = { inventoryItemId: number; quantity: number; source: "manual" };
+type SelectedItem = UsedVisitItem;
 type WorkOrderRow = Record<string, any> & { id: number; status: string };
 const MAX_COLLECTION_AMOUNT = 100000;
 const resultQuickChoices = ["تم التركيب بنجاح", "تمت الصيانة", "تم تغيير الشمعات", "تم الفحص والمتابعة", "يحتاج قطعة غيار", "يحتاج زيارة متابعة"];
@@ -81,6 +82,9 @@ export default function TechnicianPreview() {
   const audioChunksRef = useRef<Blob[]>([]);
   const [amount, setAmount] = useState("");
   const [collectionState, setCollectionState] = useState<"paid" | "partial" | "unpaid">("paid");
+  const [usedItems, setUsedItems] = useState<UsedVisitItem[]>([]);
+  const [manualItemName, setManualItemName] = useState("");
+  const [manualItemQuantity, setManualItemQuantity] = useState("1");
   const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
   useEffect(() => {
     const goOnline = () => setOnline(true);
@@ -101,6 +105,13 @@ export default function TechnicianPreview() {
     retry: false,
     staleTime: 60_000,
     refetchInterval: 30_000,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+    networkMode: "online",
+  });
+  const inventorySummaryQuery = trpc.filters.inventory.technicianSummary.useQuery(undefined, {
+    retry: false,
+    staleTime: 5_000,
     refetchOnReconnect: true,
     refetchOnWindowFocus: false,
     networkMode: "online",
@@ -142,6 +153,49 @@ export default function TechnicianPreview() {
   const orders = useMemo<WorkOrderRow[]>(() => extractArray<WorkOrderRow>(query.data), [query.data]);
   const visible = useMemo(() => filter === "all" ? orders : orders.filter(order => order.status === filter), [filter, orders]);
   const selected = orders.find(order => order.id === selectedId);
+  const catalogItems = useMemo<CatalogItem[]>(() => extractArray<CatalogItem>(inventorySummaryQuery.data), [inventorySummaryQuery.data]);
+
+  useEffect(() => {
+    setUsedItems([]);
+    setManualItemName("");
+    setManualItemQuantity("1");
+  }, [selectedId]);
+
+  const addInventoryItem = (item: CatalogItem) => {
+    setUsedItems(current => {
+      const existing = current.find(entry => entry.inventoryItemId === item.id);
+      const requestedQuantity = (existing?.quantity ?? 0) + 1;
+      const safeQuantity = item.currentBalance === undefined ? requestedQuantity : Math.min(requestedQuantity, item.currentBalance);
+      if (safeQuantity <= (existing?.quantity ?? 0)) return current;
+      if (existing) return current.map(entry => entry.inventoryItemId === item.id ? { ...entry, quantity: safeQuantity } : entry);
+      return [...current, { inventoryItemId: item.id, quantity: 1, source: "manual" }];
+    });
+  };
+
+  const addManualInventoryItem = () => {
+    const item = catalogItems.find(entry => entry.name.trim().toLocaleLowerCase() === manualItemName.trim().toLocaleLowerCase());
+    if (!item) {
+      toast.error("اختر صنفًا موجودًا في المخزن.");
+      return;
+    }
+    const quantity = Number.parseInt(manualItemQuantity, 10);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      toast.error("أدخل كمية صحيحة للصنف.");
+      return;
+    }
+    const selectedQuantity = usedItems.find(entry => entry.inventoryItemId === item.id)?.quantity ?? 0;
+    if (item.currentBalance !== undefined && selectedQuantity + quantity > item.currentBalance) {
+      toast.error(`الكمية المطلوبة أكبر من رصيد ${item.name} المتاح.`);
+      return;
+    }
+    setUsedItems(current => {
+      const existing = current.find(entry => entry.inventoryItemId === item.id);
+      if (existing) return current.map(entry => entry.inventoryItemId === item.id ? { ...entry, quantity: entry.quantity + quantity } : entry);
+      return [...current, { inventoryItemId: item.id, quantity, source: "manual" }];
+    });
+    setManualItemName("");
+    setManualItemQuantity("1");
+  };
 
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
@@ -215,7 +269,7 @@ export default function TechnicianPreview() {
       toast.error("مبلغ التحصيل غير منطقي؛ الحد الأقصى المسموح 100,000.");
       return;
     }
-    const items: SelectedItem[] = [];
+
     if (outcome === "not_completed" && !notCompletedReason.trim()) {
       toast.error("اكتب سبب عدم تنفيذ الزيارة قبل الحفظ.");
       return;
@@ -231,7 +285,7 @@ export default function TechnicianPreview() {
       collectedAmount: outcome === "completed" ? normalizedAmount : 0,
       tdsIn: outcome === "completed" && tdsIn.trim() ? Number(tdsIn) : null,
       tdsOut: outcome === "completed" && tdsOut.trim() ? Number(tdsOut) : null,
-      items: outcome === "completed" ? items : [],
+      items: outcome === "completed" ? usedItems : [],
     });
   };
 
@@ -253,7 +307,7 @@ export default function TechnicianPreview() {
       <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3.5"><div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white"><ShieldCheck className="h-5 w-5" /></div><div><h2 className="font-black text-emerald-950">أوامرك المسندة فقط</h2><p className="mt-1 text-xs font-semibold leading-6 text-emerald-800">تظهر هنا أوامر العمل الخاصة بك فقط، دون الخزينة أو التقارير أو بيانات باقي الفنيين.</p></div></div></section>
 
       <section className="space-y-2.5"><div className="flex items-center justify-between"><div><h2 className="text-lg font-black text-slate-900">أوامر الشغل</h2><p className="mt-1 text-xs font-bold text-slate-500">حدّث الحالة بعد كل خطوة</p></div><span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-black text-teal-800">{visible.length} أوامر</span></div>
-        {visible.length ? visible.map(order => <article key={order.id} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm"><div className="flex items-start gap-3"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-700"><UserRound className="h-6 w-6" /></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div><h3 className="truncate text-base font-black text-slate-900">{order.customer?.name || "عميل"}</h3><p className="mt-1 text-xs font-bold text-slate-500">{serviceLabels[order.visitType] || order.visitType}</p></div><span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-700">{statusLabels[order.status] || order.status}</span></div><div className="mt-3 space-y-2 text-xs font-bold text-slate-500"><span className="flex items-center gap-1.5"><Clock3 className="h-4 w-4 text-teal-600" />{new Date(order.visitDate).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" })}</span><span className="flex items-start gap-1.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />{order.customer?.address || "العنوان غير مسجل"}</span></div></div></div><div className="mt-4 flex flex-wrap items-center gap-2"><CustomerContactActions customer={order.customer ?? {}} serviceType={order.visitType} companyWhatsAppPhone={notificationSettingsQuery.data?.companyWhatsAppPhone} compact labels showLocationPlaceholder className="shrink-0" />{order.status === "assigned" ? <Button type="button" onClick={() => updateOrder(order.id, "en_route")} className="h-10 rounded-xl bg-teal-700 text-xs font-black">في الطريق</Button> : order.status !== "completed" && order.status !== "cancelled" ? <Button type="button" onClick={() => { setSelectedId(order.id); setResult(order.visitResult || ""); setOutcome(order.executionOutcome === "not_completed" ? "not_completed" : "completed"); setNotCompletedReason(order.notCompletedReason || ""); setPhotoBeforeDataUrl(null); setPhotoAfterDataUrl(null); setPhotoBeforeName(""); setPhotoAfterName(""); setTdsIn(""); setTdsOut(""); setAudioDataUrl(null); setAudioName(""); setIsRecording(false); setCollectionState("paid"); }} aria-label="تحديث" className="h-10 rounded-xl bg-teal-700 text-xs font-black">تحديث / تسجيل التنفيذ</Button> : <div className="flex flex-wrap items-center gap-2"><span className="flex h-10 items-center justify-center rounded-xl bg-emerald-50 px-3 text-xs font-black text-emerald-800">تم الحفظ</span><Button type="button" variant="outline" onClick={() => { const opened = printWorkOrderReceipt({ workOrderId: order.id, customerName: order.customer?.name || "", customerPhone: order.customer?.phone, customerAddress: order.customer?.address, visitType: serviceLabels[order.visitType] || order.visitType || "", visitDate: order.visitDate, technicianName: order.technicianName || user?.name, tdsIn: order.tdsIn == null ? null : Number(order.tdsIn), tdsOut: order.tdsOut == null ? null : Number(order.tdsOut), collectedAmount: order.collectedAmount == null ? null : Number(order.collectedAmount), currency: order.collectedCurrency || "SAR", visitResult: order.visitResult, notes: order.notes, items: Array.isArray(order.items) ? order.items.map((item: any) => ({ name: item.name || item.itemName || "", quantity: Number(item.quantity || 0), unit: item.unit })) : [] }); if (opened) toast.success("تم تجهيز فاتورة أمر العمل للطباعة أو الحفظ PDF"); else toast.error("تعذر فتح الفاتورة؛ اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى"); }} className="h-10 rounded-xl px-3 text-xs font-black text-sky-700"><FileText className="ml-1 h-4 w-4" />فاتورة PDF</Button></div>}</div>{order.status === "en_route" ? <Button type="button" onClick={() => updateOrder(order.id, "arrived")} className="mt-2 h-10 w-full rounded-xl bg-sky-700 text-xs font-black">وصلت إلى العميل</Button> : null}{order.status === "arrived" ? <Button type="button" onClick={() => updateOrder(order.id, "in_progress")} className="mt-2 h-10 w-full rounded-xl bg-indigo-700 text-xs font-black">بدء التنفيذ</Button> : null}</article>) : <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-bold text-slate-500">لا توجد أوامر مسندة حاليًا.</div>}
+        {visible.length ? visible.map(order => <article key={order.id} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm"><div className="flex items-start gap-3"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-700"><UserRound className="h-6 w-6" /></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div><h3 className="truncate text-base font-black text-slate-900">{order.customer?.name || "عميل"}</h3><p className="mt-1 text-xs font-bold text-slate-500">{serviceLabels[order.visitType] || order.visitType}</p></div><span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-700">{statusLabels[order.status] || order.status}</span></div><div className="mt-3 space-y-2 text-xs font-bold text-slate-500"><span className="flex items-center gap-1.5"><Clock3 className="h-4 w-4 text-teal-600" />{new Date(order.visitDate).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" })}</span><span className="flex items-start gap-1.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />{order.customer?.address || "العنوان غير مسجل"}</span></div></div></div><div className="mt-4 flex flex-wrap items-center gap-2"><CustomerContactActions customer={order.customer ?? {}} serviceType={order.visitType} companyWhatsAppPhone={notificationSettingsQuery.data?.companyWhatsAppPhone} compact labels showLocationPlaceholder hideLocationActions className="shrink-0" />{order.status === "assigned" ? <Button type="button" onClick={() => updateOrder(order.id, "en_route")} className="h-10 rounded-xl bg-teal-700 text-xs font-black">في الطريق</Button> : order.status !== "completed" && order.status !== "cancelled" ? <Button type="button" onClick={() => { setSelectedId(order.id); setResult(order.visitResult || ""); setOutcome(order.executionOutcome === "not_completed" ? "not_completed" : "completed"); setNotCompletedReason(order.notCompletedReason || ""); setPhotoBeforeDataUrl(null); setPhotoAfterDataUrl(null); setPhotoBeforeName(""); setPhotoAfterName(""); setTdsIn(""); setTdsOut(""); setAudioDataUrl(null); setAudioName(""); setIsRecording(false); setCollectionState("paid"); }} aria-label="تحديث" className="h-10 rounded-xl bg-teal-700 text-xs font-black">تحديث / تسجيل التنفيذ</Button> : <div className="flex flex-wrap items-center gap-2"><span className="flex h-10 items-center justify-center rounded-xl bg-emerald-50 px-3 text-xs font-black text-emerald-800">تم الحفظ</span><Button type="button" variant="outline" onClick={() => { const opened = printWorkOrderReceipt({ workOrderId: order.id, customerName: order.customer?.name || "", customerPhone: order.customer?.phone, customerAddress: order.customer?.address, visitType: serviceLabels[order.visitType] || order.visitType || "", visitDate: order.visitDate, technicianName: order.technicianName || user?.name, tdsIn: order.tdsIn == null ? null : Number(order.tdsIn), tdsOut: order.tdsOut == null ? null : Number(order.tdsOut), collectedAmount: order.collectedAmount == null ? null : Number(order.collectedAmount), currency: order.collectedCurrency || "SAR", visitResult: order.visitResult, notes: order.notes, items: Array.isArray(order.items) ? order.items.map((item: any) => ({ name: item.name || item.itemName || "", quantity: Number(item.quantity || 0), unit: item.unit })) : [] }); if (opened) toast.success("تم تجهيز فاتورة أمر العمل للطباعة أو الحفظ PDF"); else toast.error("تعذر فتح الفاتورة؛ اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى"); }} className="h-10 rounded-xl px-3 text-xs font-black text-sky-700"><FileText className="ml-1 h-4 w-4" />فاتورة PDF</Button></div>}</div>{order.status === "en_route" ? <Button type="button" onClick={() => updateOrder(order.id, "arrived")} className="mt-2 h-10 w-full rounded-xl bg-sky-700 text-xs font-black">وصلت إلى العميل</Button> : null}{order.status === "arrived" ? <Button type="button" onClick={() => updateOrder(order.id, "in_progress")} className="mt-2 h-10 w-full rounded-xl bg-indigo-700 text-xs font-black">بدء التنفيذ</Button> : null}</article>) : <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-bold text-slate-500">لا توجد أوامر مسندة حاليًا.</div>}
       </section>
 
       {selected ? (
@@ -283,6 +337,7 @@ export default function TechnicianPreview() {
           <div className="mt-3"><p className="text-sm font-black text-slate-700">حالة التحصيل</p><div className="mt-2 grid grid-cols-3 gap-2"><button type="button" onClick={() => setCollectionState("paid")} className={`rounded-xl border p-2 text-xs font-black ${collectionState === "paid" ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600"}`}>تم التحصيل</button><button type="button" onClick={() => setCollectionState("partial")} className={`rounded-xl border p-2 text-xs font-black ${collectionState === "partial" ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-600"}`}>جزء من المبلغ</button><button type="button" onClick={() => { setCollectionState("unpaid"); setAmount("0"); }} className={`rounded-xl border p-2 text-xs font-black ${collectionState === "unpaid" ? "border-rose-500 bg-rose-50 text-rose-800" : "border-slate-200 bg-white text-slate-600"}`}>لم يتم التحصيل</button></div></div>
           <label className="mt-3 block text-sm font-black text-slate-700">المبلغ المحصل<input aria-label="المبلغ المحصل" inputMode="numeric" min="0" max={MAX_COLLECTION_AMOUNT} value={amount} onChange={event => { setCollectionState("partial"); setAmount(event.target.value.replace(/[^0-9-]/g, "")); }} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-3 text-lg font-black" placeholder="0" /><div className="mt-2 flex flex-wrap gap-2">{collectionQuickChoices.map(choice => <button key={choice} type="button" onClick={() => { setCollectionState(choice === "0" ? "unpaid" : "partial"); setAmount(choice); }} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-700">{choice}</button>)}</div><span className="mt-1 block text-[11px] font-bold text-slate-500">اختر مبلغًا سريعًا أو اكتب الرقم كما هو</span></label>
           <div className="mt-3 grid grid-cols-2 gap-2"><label className="text-sm font-black text-slate-700">TDS قبل الصيانة<input aria-label="TDS قبل الصيانة" inputMode="numeric" value={tdsIn} onChange={event => setTdsIn(event.target.value.replace(/[^0-9]/g, ""))} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-3 text-lg font-black" placeholder="اختياري" /></label><label className="text-sm font-black text-slate-700">TDS بعد الصيانة<input aria-label="TDS بعد الصيانة" inputMode="numeric" value={tdsOut} onChange={event => setTdsOut(event.target.value.replace(/[^0-9]/g, ""))} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-3 text-lg font-black" placeholder="اختياري" /></label></div>
+          {outcome === "completed" ? <UsedItemsSection items={usedItems} setItems={setUsedItems} catalogItems={catalogItems} manualName={manualItemName} setManualName={setManualItemName} manualQuantity={manualItemQuantity} setManualQuantity={setManualItemQuantity} onAdd={addManualInventoryItem} onQuickAdd={addInventoryItem} listId="technician-inventory-items" /> : null}
           <Button type="button" onClick={completeOrder} disabled={update.isPending} className="mt-4 h-12 w-full rounded-xl bg-teal-700 font-black hover:bg-teal-800">{update.isPending ? "جاري الحفظ..." : <><CheckCircle2 className="ml-2 h-5 w-5" /> حفظ وإغلاق أمر العمل</>}</Button>
         </section>
       ) : null}
