@@ -1,15 +1,19 @@
-const JWT_SECRET_FALLBACK =
-  "purepoint_secure_jwt_secret_fallback_key_2026_super_safe";
+import { randomBytes } from "node:crypto";
+
+const DEVELOPMENT_JWT_SECRET = randomBytes(32).toString("base64url");
 
 /**
- * Returns a signing secret that satisfies jose's minimum HS256 key length.
- * A properly configured environment variable always takes precedence.
+ * Returns the configured signing secret. Production must provide a strong
+ * environment secret; non-production gets a per-process random secret so no
+ * credential is embedded in the source tree.
  */
 export function getJwtSecret(): string {
   const configured = process.env.JWT_SECRET?.trim();
-  return configured && configured.length >= 32
-    ? configured
-    : JWT_SECRET_FALLBACK;
+  if (configured && configured.length >= JWT_SECRET_MIN_LENGTH) return configured;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`JWT_SECRET must be configured with at least ${JWT_SECRET_MIN_LENGTH} characters in production`);
+  }
+  return DEVELOPMENT_JWT_SECRET;
 }
 
 export function getJwtSecretKey(): Uint8Array {
