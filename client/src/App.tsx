@@ -11,6 +11,7 @@ const CustomerProfile = lazy(() => import("./pages/CustomerProfile"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Cash = lazy(() => import("./pages/Cash"));
 const Home = lazy(() => import("./pages/Home"));
+const Gallery = lazy(() => import("./pages/Gallery"));
 const Inventory = lazy(() => import("./pages/Inventory"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Reminders = lazy(() => import("./pages/Reminders"));
@@ -93,6 +94,7 @@ function ProtectedTechnician() { return <TechnicianOnly><TechnicianPreview /></T
 function TechnicianPendingOperations() { return <TechnicianOnly><PendingOperations /></TechnicianOnly>; }
 function AdminInventory() { return <AdminOnly><Inventory /></AdminOnly>; }
 function AdminCash() { return <AdminOnly><Cash /></AdminOnly>; }
+function AdminGallery() { return <AdminOnly><Gallery /></AdminOnly>; }
 function AdminReports() { return <AdminOnly><Reports /></AdminOnly>; }
 function AdminTechnicianPayroll() { return <AdminOnly><TechnicianPayroll /></AdminOnly>; }
 function AdminTechnicianLocations() { return <AdminOnly><TechnicianLocations /></AdminOnly>; }
@@ -134,6 +136,7 @@ function Router() {
         <Route path="/reminders" component={Reminders} />
         <Route path="/inventory" component={AdminInventory} />
         <Route path="/cash" component={AdminCash} />
+        <Route path="/gallery" component={AdminGallery} />
         <Route path="/reports" component={AdminReports} />
         <Route path="/technician-payroll" component={AdminTechnicianPayroll} />
         <Route path="/technician-locations" component={AdminTechnicianLocations} />

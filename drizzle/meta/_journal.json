@@ -281,6 +281,13 @@
       "when": 1787706957768,
       "tag": "0039_public_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1787761983198,
+      "tag": "0040_common_thundra",
+      "breakpoints": true
     }
   ]
 }
