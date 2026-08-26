@@ -162,6 +162,8 @@ const workOrderCreateInput = z.object({
 const workOrderUpdateInput = z.object({
   id: z.number().int().positive(),
   status: z.enum(workOrderStatusValues),
+  nextVisitDate: z.date().optional().nullable(),
+  followUpDays: z.number().int().nonnegative().max(3650).optional().nullable(),
   visitResult: z.string().trim().max(2000).optional().nullable(),
   notes: z.string().trim().max(2000).optional().nullable(),
   executionOutcome: z.enum(executionOutcomeValues).optional().nullable(),
@@ -1746,11 +1748,24 @@ db.select({ id: customers.id, createdAt: customers.createdAt }).from(customers).
       if (!allowed) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية تعديل أمر العمل هذا." });
       const ownerId = visit.ownerId;
       const now = new Date();
+      const hasNextVisitOverride = input.nextVisitDate !== undefined || input.followUpDays !== undefined;
+      const scheduledNextVisitDate = input.nextVisitDate ?? (input.followUpDays == null ? null : followUpDate(now, input.followUpDays));
+      const nextVisitDate = hasNextVisitOverride ? scheduledNextVisitDate : visit.nextVisitDate;
       const outcome = input.executionOutcome ?? (input.status === "completed" ? "completed" : input.status === "postponed" || input.status === "cancelled" ? "not_completed" : visit.executionOutcome);
       if (outcome === "not_completed" && !input.notCompletedReason?.trim() && !visit.notCompletedReason?.trim()) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "اكتب سبب عدم تنفيذ الزيارة قبل الحفظ." });
       }
-      await db.update(visits).set({ status: input.status, visitResult: input.visitResult ?? visit.visitResult, notes: input.notes ?? visit.notes, executionOutcome: outcome, notCompletedReason: outcome === "not_completed" ? input.notCompletedReason?.trim() ?? visit.notCompletedReason : null, arrivedAt: input.status === "arrived" ? now : visit.arrivedAt, completedAt: input.status === "completed" ? now : visit.completedAt, tdsIn: input.tdsIn ?? visit.tdsIn, tdsOut: input.tdsOut ?? visit.tdsOut }).where(and(eq(visits.id, input.id), eq(visits.ownerId, ownerId)));
+      await db.update(visits).set({ status: input.status, nextVisitDate, visitResult: input.visitResult ?? visit.visitResult, notes: input.notes ?? visit.notes, executionOutcome: outcome, notCompletedReason: outcome === "not_completed" ? input.notCompletedReason?.trim() ?? visit.notCompletedReason : null, arrivedAt: input.status === "arrived" ? now : visit.arrivedAt, completedAt: input.status === "completed" ? now : visit.completedAt, tdsIn: input.tdsIn ?? visit.tdsIn, tdsOut: input.tdsOut ?? visit.tdsOut }).where(and(eq(visits.id, input.id), eq(visits.ownerId, ownerId)));
+      if (input.status === "completed" && hasNextVisitOverride) {
+        const visitPendingReminder = await db.select().from(reminders).where(and(eq(reminders.ownerId, ownerId), eq(reminders.visitId, visit.id), eq(reminders.status, "pending"))).limit(1);
+        await db.update(reminders).set({ status: "completed" }).where(and(eq(reminders.ownerId, ownerId), eq(reminders.customerId, visit.customerId), eq(reminders.status, "pending"), ne(reminders.visitId, visit.id)));
+        if (scheduledNextVisitDate) {
+          if (visitPendingReminder[0]) await db.update(reminders).set({ reminderDate: scheduledNextVisitDate }).where(and(eq(reminders.id, visitPendingReminder[0].id), eq(reminders.ownerId, ownerId)));
+          else await db.insert(reminders).values({ customerId: visit.customerId, visitId: visit.id, ownerId, reminderDate: scheduledNextVisitDate });
+        } else if (visitPendingReminder[0]) {
+          await db.update(reminders).set({ status: "completed" }).where(and(eq(reminders.id, visitPendingReminder[0].id), eq(reminders.ownerId, ownerId)));
+        }
+      }
       if (input.status === "completed" && visit.status !== "completed") {
         const inventoryRows = input.items.length ? await db.select().from(inventoryItems).where(and(eq(inventoryItems.ownerId, ownerId), inArray(inventoryItems.id, input.items.map(item => item.inventoryItemId)))) : [];
         const inventoryById = new Map(inventoryRows.map(item => [item.id, item]));

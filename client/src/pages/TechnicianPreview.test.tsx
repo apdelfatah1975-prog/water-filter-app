@@ -154,6 +154,30 @@ describe("واجهة الفني وأوامر العمل", () => {
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ id: 7, tdsIn: 420, tdsOut: 38 }));
   });
 
+  it("ترسل مدة متابعة مخصصة عند إغلاق أمر العمل وتعرض الافتراضي 120 يومًا", () => {
+    orders[0].status = "in_progress";
+    render(<TechnicianPreview />);
+    fireEvent.click(screen.getByRole("button", { name: "تحديث" }));
+    const followUpInput = screen.getByLabelText("عدد أيام المتابعة للفني") as HTMLInputElement;
+    expect(followUpInput.value).toBe("120");
+    fireEvent.change(followUpInput, { target: { value: "60" } });
+    fireEvent.click(screen.getByRole("button", { name: /حفظ وإغلاق أمر العمل/ }));
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ id: 7, status: "completed", followUpDays: 60, nextVisitDate: null }));
+  });
+
+  it("ترسل تاريخ المتابعة المحدد بدل مدة الأيام", () => {
+    orders[0].status = "in_progress";
+    render(<TechnicianPreview />);
+    fireEvent.click(screen.getByRole("button", { name: "تحديث" }));
+    fireEvent.change(screen.getByLabelText("تاريخ المتابعة القادمة للفني"), { target: { value: "2026-12-20" } });
+    const payload = expect.objectContaining({ id: 7, status: "completed", followUpDays: null });
+    fireEvent.click(screen.getByRole("button", { name: /حفظ وإغلاق أمر العمل/ }));
+    expect(mutate).toHaveBeenCalledWith(payload);
+    const sent = mutate.mock.calls.at(-1)?.[0] as { nextVisitDate?: Date };
+    expect(sent.nextVisitDate).toBeInstanceOf(Date);
+    expect(sent.nextVisitDate?.toISOString()).toContain("2026-12-20");
+  });
+
   it("تسمح بالاختيارات السريعة للنتيجة والتحصيل", () => {
     orders[0].status = "in_progress";
     render(<TechnicianPreview />);

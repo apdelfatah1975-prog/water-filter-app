@@ -6,6 +6,12 @@ import { getDb } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 vi.mock("./db", () => ({ getDb: vi.fn() }));
+vi.mock("./backup", () => ({
+  BACKUP_TABLES: [{ key: "customers", label: "العملاء" }],
+  createOwnerBackup: vi.fn(),
+  getOwnerBackupStatus: vi.fn(),
+  refreshOwnerBackup: vi.fn().mockResolvedValue(null),
+}));
 
 const TEST_PIN = "1234";
 const TEST_PIN_HASH = "test-salt-for-vitest:c872f951b643e146075a3a65ee17f534ce1833ce47e7f8d80d70411e185dd82a9def0d82315ac8f743256bd488bdbac95da97a2261b57d3ccf3483dd73e7e16a";
@@ -911,5 +917,76 @@ describe("صلاحيات الفني والإدارة", () => {
       category: "مصروف",
       transactionDate: new Date("2026-08-15T09:00:00.000Z"),
     })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("ينشئ تذكيرًا عند إغلاق أمر العمل مع مدة متابعة من الفني", async () => {
+    vi.useFakeTimers();
+    const now = new Date("2026-08-26T12:00:00.000Z");
+    vi.setSystemTime(now);
+    const updates: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const visit = { id: 220, ownerId: 1, customerId: 7, assignedTechnicianId: 9, status: "in_progress", visitType: "maintenance", nextVisitDate: null, visitResult: null, notes: null, executionOutcome: null, notCompletedReason: null, arrivedAt: null, completedAt: null, tdsIn: null, tdsOut: null };
+    const db = {
+      select: () => ({
+        from: (table: unknown) => ({
+          where: () => {
+            const rows = table === visits ? [visit] : table === reminders ? [] : [];
+            const result = Promise.resolve(rows) as Promise<unknown[]> & { limit?: () => Promise<unknown[]> };
+            result.limit = async () => rows;
+            return result;
+          },
+        }),
+      }),
+      update: (table: unknown) => ({
+        set: (values: Record<string, unknown>) => ({ where: async () => { updates.push({ table, values }); } }),
+      }),
+      insert: (table: unknown) => ({
+        values: async (values: Record<string, unknown>) => {
+          inserts.push({ table, values });
+          return [{ insertId: 0 }];
+        },
+      }),
+    };
+    vi.mocked(getDb).mockResolvedValue(db as never);
+
+    try {
+      await expect(appRouter.createCaller(createTechnicianContext()).filters.workOrders.updateStatus({ id: 220, status: "completed", followUpDays: 45 })).resolves.toEqual({ success: true });
+      const visitUpdate = updates.find(entry => entry.table === visits);
+      const reminderInsert = inserts.find(entry => entry.table === reminders);
+      expect(visitUpdate?.values.nextVisitDate).toEqual(new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000));
+      expect(reminderInsert?.values).toMatchObject({ customerId: 7, visitId: 220, ownerId: 1, reminderDate: new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("يحدّث التذكير القائم عند إغلاق أمر العمل مع تاريخ محدد من الفني", async () => {
+    const updates: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+    const selectedVisit = { id: 221, ownerId: 1, customerId: 8, assignedTechnicianId: 9, status: "in_progress", visitType: "installation", nextVisitDate: null, visitResult: null, notes: null, executionOutcome: null, notCompletedReason: null, arrivedAt: null, completedAt: null, tdsIn: null, tdsOut: null };
+    const existingReminder = { id: 331, ownerId: 1, customerId: 8, visitId: 221, status: "pending", reminderDate: new Date("2026-09-01T09:00:00.000Z") };
+    const db = {
+      select: () => ({
+        from: (table: unknown) => ({
+          where: () => {
+            const rows = table === visits ? [selectedVisit] : table === reminders ? [existingReminder] : [];
+            const result = Promise.resolve(rows) as Promise<unknown[]> & { limit?: () => Promise<unknown[]> };
+            result.limit = async () => rows;
+            return result;
+          },
+        }),
+      }),
+      update: (table: unknown) => ({
+        set: (values: Record<string, unknown>) => ({ where: async () => { updates.push({ table, values }); } }),
+      }),
+      insert: (table: unknown) => ({ values: async (values: Record<string, unknown>) => { inserts.push({ table, values }); return [{ insertId: 0 }]; } }),
+    };
+    vi.mocked(getDb).mockResolvedValue(db as never);
+    const nextVisitDate = new Date("2026-11-20T09:00:00.000Z");
+
+    await expect(appRouter.createCaller(createTechnicianContext()).filters.workOrders.updateStatus({ id: 221, status: "completed", nextVisitDate })).resolves.toEqual({ success: true });
+    expect(updates.find(entry => entry.table === visits)?.values.nextVisitDate).toEqual(nextVisitDate);
+    expect(updates.filter(entry => entry.table === reminders).some(entry => entry.values.reminderDate?.getTime?.() === nextVisitDate.getTime())).toBe(true);
+    expect(inserts.filter(entry => entry.table === reminders)).toHaveLength(0);
   });
 });

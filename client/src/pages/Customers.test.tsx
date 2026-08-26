@@ -408,7 +408,7 @@ describe("ترابط تعديل بيانات العميل", () => {
     expect(screen.getByRole("button", { name: /فلترة حالة العميل: خلال ٥ أيام/ })).toBeTruthy();
   });
 
-  it("يعرض بطاقات الحالات الملونة الخمس بوضوح ويطبق فلتر بدون موعد", () => {
+  it("يعرض صف فلاتر مدمجًا ويطبق فلتر بدون موعد", () => {
     mocks.list.mockReturnValue({
       data: [
         { id: 21, name: "عميل متأخر", phone: "0500000001", address: "العنوان", customerCode: "C-000021", followUp: { nextVisitDate: new Date("2026-08-10T09:00:00Z"), daysRemaining: -2 } },
@@ -421,15 +421,17 @@ describe("ترابط تعديل بيانات العميل", () => {
       isError: false,
     });
     render(<Customers />);
-    expect(screen.getByTestId("customer-status-card-overdue").className).toContain("bg-rose-50");
-    expect(screen.getByTestId("customer-status-card-today").className).toContain("bg-red-50");
-    expect(screen.getByTestId("customer-status-card-within_5_days").className).toContain("bg-orange-50");
-    expect(screen.getByTestId("customer-status-card-more_than_5_days").className).toContain("bg-emerald-50");
-    expect(screen.getByTestId("customer-status-card-none").className).toContain("bg-slate-50");
-    expect(screen.getByRole("button", { name: "عرض بدون موعد" }).textContent).toContain("بدون موعد");
-    fireEvent.click(screen.getByTestId("customer-status-card-none"));
+    expect(screen.getByRole("button", { name: /فلترة حالة العميل: الكل/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /فلترة حالة العميل: متأخر/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /فلترة حالة العميل: اليوم/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /فلترة حالة العميل: خلال ٥ أيام/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /فلترة حالة العميل: أكثر من ٥ أيام/ })).toBeTruthy();
+    const noneFilter = screen.getByTestId("customer-filter-none");
+    expect(noneFilter.textContent).toContain("بدون موعد");
+    expect(screen.queryByTestId("customer-status-card-none")).toBeNull();
+    fireEvent.click(noneFilter);
     expect(mocks.list.mock.calls.some(call => call[0]?.followUpStatus === "none")).toBe(true);
-    expect(screen.getByTestId("customer-status-card-none").getAttribute("aria-pressed")).toBe("true");
+    expect(noneFilter.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("يمنع إضافة كمية تتجاوز الرصيد المتاح للصنف", () => {

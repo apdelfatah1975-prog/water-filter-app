@@ -146,6 +146,8 @@ export function OfflineSyncManager() {
           notCompletedReason: operation.notCompletedReason ?? null,
           collectedAmount: operation.collectedAmount ?? 0,
           collectedCurrency: operation.collectedCurrency ?? "SAR",
+          nextVisitDate: operation.nextVisitDate ? new Date(operation.nextVisitDate) : undefined,
+          followUpDays: operation.followUpDays,
           items: operation.items ?? [],
         });
         removePendingWorkOrderUpdate(user.id, operation.clientOperationId);

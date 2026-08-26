@@ -93,6 +93,8 @@ export type PendingWorkOrderUpdate = {
   notCompletedReason?: string | null;
   collectedAmount?: number;
   collectedCurrency?: "SAR";
+  nextVisitDate?: string | null;
+  followUpDays?: number | null;
   items?: OfflineVisitItem[];
   createdAt: string;
 };
