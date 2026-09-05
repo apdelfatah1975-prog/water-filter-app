@@ -17,7 +17,7 @@ const requireUser = t.middleware(async opts => {
   return next({
     ctx: {
       ...ctx,
-      user,
+      user: user,
     },
   });
 });
