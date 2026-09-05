@@ -11,8 +11,6 @@ import {
   technicianLocations,
   workOrderProofs,
 } from "../../drizzle/schema";
-
-  DEFAULT_ALERT_HOUR,
   DEFAULT_ALERT_LEAD_DAYS,
   DEFAULT_ALERT_MINUTE,
   DEFAULT_TIMEZONE_OFFSET_MINUTES,
