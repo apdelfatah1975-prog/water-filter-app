@@ -11,7 +11,8 @@ import { filterManagementRouter } from "./routers/filterManagement";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
-  system: systemRouter,
+filterManagement: filterManagementRouter,
+    system: systemRouter,
   auth: router({
          me: publicProcedure.query(({ ctx }) => ctx.user ?? { openId: 'local-admin', email: 'admin@local.com', name: 'Admin', role: 'admin' }),
       
