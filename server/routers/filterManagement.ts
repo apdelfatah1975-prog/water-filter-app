@@ -1,6 +1,6 @@
 import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
-import { db } from "../../drizzle/db";
+import { db } from "../../../drizzle/db";
 import { filters } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -40,3 +40,4 @@ export const filterManagementRouter = router({
       }
     }),
 });
+```eof
