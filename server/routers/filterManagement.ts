@@ -1,9 +1,19 @@
 import { TRPCError } from "@trpc/server";
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import { and, asc, desc, eq, gte, inArray, like, lte, ne, or } from "drizzle-orm";
+import { parse as parseCookie } from "cookie";
+import { and, asc, desc, eq, gte, inArray, isNotNull, like, lte, ne, or } from "drizzle-orm";
 import { z } from "zod";
+import { normalizeEvidenceDataUrl, isSupportedEvidenceMime } from "../utils/evidence";
 import {
+  cashTransactions,
+  customers,
+  inventoryItems,
+  inventoryMovements,
+  notificationSettings,
+  serviceTypeItems,
+  serviceTypes,
+  visitItems,
   reminders,
   visits,
   users,
@@ -11,15 +21,6 @@ import {
   technicianLocations,
   workOrderProofs,
 } from "../../drizzle/schema";
-  DEFAULT_ALERT_LEAD_DAYS,
-  DEFAULT_ALERT_MINUTE,
-  DEFAULT_TIMEZONE_OFFSET_MINUTES,
-  alertDateForReminder,
-  calculateStockBalance,
-  customerCode,
-  daysUntilFollowUp,
-  followUpDate,
-  followUpSummaryFromVisits,
   isReminderAlertActive,
   needsAutomaticReminder,
   visitTypes,
