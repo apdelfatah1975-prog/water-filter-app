@@ -1,4 +1,5 @@
-import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
+const NOT_ADMIN_ERR_MSG = "Unauthorized";
+const UNAUTHED_ERR_MSG = "Not authenticated";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
