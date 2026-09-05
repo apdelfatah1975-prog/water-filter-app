@@ -4,16 +4,7 @@ import { promisify } from "node:util";
 import { parse as parseCookie } from "cookie";
 import { and, asc, desc, eq, gte, inArray, isNotNull, like, lte, ne, or } from "drizzle-orm";
 import { z } from "zod";
-import { normalizeEvidenceDataUrl, isSupportedEvidenceMime } from "../../shared/evidence";
-import {
-  cashTransactions,
-  customers,
-  inventoryItems,
-  inventoryMovements,
-  notificationSettings,
-  serviceTypeItems,
-  serviceTypes,
-  visitItems,
+import{
   reminders,
   visits,
   users,
