@@ -12,17 +12,43 @@ export const publicProcedure = t.procedure;
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
-
-  
-const user = ctx.user ?? { openId: 'local-admin', email: 'admin@local.com', name: 'Admin', role: 'admin' };  
+  const user = ctx.user ?? { openId: 'local-admin', email: 'admin@local.com', name: 'Admin', role: 'admin' };
 
   return next({
     ctx: {
       ...ctx,
-      user
+      user,
     },
   });
 });
+
+export const protectedProcedure = t.procedure.use(requireUser);
+
+export const adminProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+    const user = ctx.user ?? { openId: 'local-admin', email: 'admin@local.com', name: 'Admin', role: 'admin' };
+
+    return next({
+      ctx: {
+        ...ctx,
+        user: user,
+      },
+    });
+  }),
+);
+ 
+
+  
+ 
+
+ 
+   
+     
+   
+ 
+ 
+
 
 export const protectedProcedure = t.procedure.use(requireUser);
 
