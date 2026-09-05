@@ -1,29 +1,42 @@
-import { TRPCError } from "@trpc/server";
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
-import { parse as parseCookie } from "cookie";
-import { and, asc, desc, eq, gte, inArray, isNotNull, like, lte, ne, or } from "drizzle-orm";
+import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
-import { normalizeEvidenceDataUrl, isSupportedEvidenceMime } from "../utils/evidence";
-import {
-  cashTransactions,
-  customers,
-  inventoryItems,
-  inventoryMovements,
-  notificationSettings,
-  serviceTypeItems,
-  serviceTypes,
-  visitItems,
-  reminders,
-  visits,
-  users,
-  allowedTechnicianAccounts,
-  technicianLocations,
-  workOrderProofs,
-} from "../../drizzle/schema";
-import {
-  isReminderAlertActive,
-  needsAutomaticReminder,
-  visitTypes,
-} from "../../shared/filterBusiness";
+import { db } from "../../drizzle/db";
+import { filters } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
+export const filterManagementRouter = router({
+  list: protectedProcedure.query(async () => {
+    try {
+      const allFilters = await db.select().from(filters);
+      return allFilters;
+    } catch (error) {
+      console.error("Error fetching filters:", error);
+      throw new Error("Failed to fetch filters");
+    }
+  }),
+
+  create: protectedProcedure
+    .input(
+      z.object({
+        name: z.string(),
+        type: z.string(),
+        location: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const [newFilter] = await db
+          .insert(filters)
+          .values({
+            name: input.name,
+            type: input.type,
+            location: input.location || "",
+          })
+          .$returningId();
+        return { success: true, filterId: newFilter };
+      } catch (error) {
+        console.error("Error creating filter:", error);
+        throw new Error("Failed to create filter");
+      }
+    }),
+});
