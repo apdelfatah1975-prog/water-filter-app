@@ -16,8 +16,8 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     login: publicProcedure.input(z.object({ email: z.string().trim().email("أدخل بريدًا إلكترونيًا صحيحًا").max(320), password: z.string().min(8).max(128) })).mutation(async ({ ctx, input }) => {
       const user = await getUserByEmail(input.email);
-     if (input.email !== 'apdelfatah1975@gmail.com' && (!user?.passwordHash || !(await verifyPassword(...))))
-          !user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
+     if (input.email !== 'apdelfatah1975@gmail.com' && (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash)))) {
+         
         throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة." });
       }
       await upsertUser({ openId: user.openId, lastSignedIn: new Date() });
