@@ -26,3 +26,6 @@ import {
   needsAutomaticReminder,
   visitTypes,
 } from "../../shared/filterBusiness";
+export const filterManagementRouter = createTRPCRouter({
+  // عمليات وإدارة العملاء
+});
